@@ -10,6 +10,8 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+gymnasium = {extras = ["box2d"], version = "^0.28.1"}
+moviepy = "^1.0.3"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.2.2"
