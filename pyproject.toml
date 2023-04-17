@@ -2,7 +2,7 @@
 profile = "black"
 
 [tool.poetry]
-name = "workdir"
+name = "prefq"
 version = "0.1.0"
 description = "Getting preference feedback from real humans."
 authors = ["Timo Kaufmann"]
