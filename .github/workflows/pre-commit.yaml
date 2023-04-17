@@ -19,4 +19,4 @@ jobs:
     - name: Install poetry environment
       run: poetry install
     - name: Run pre-commit checks
-      run: poetry run pre-commit --all-files
+      run: poetry run pre-commit run --all-files

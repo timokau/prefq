@@ -1,10 +1,45 @@
 [[package]]
+name = "astroid"
+version = "2.15.3"
+description = "An abstract syntax tree for Python with inference support."
+category = "dev"
+optional = false
+python-versions = ">=3.7.2"
+
+[package.dependencies]
+lazy-object-proxy = ">=1.4.0"
+typing-extensions = {version = ">=4.0.0", markers = "python_version < \"3.11\""}
+wrapt = [
+    {version = ">=1.11,<2", markers = "python_version < \"3.11\""},
+    {version = ">=1.14,<2", markers = "python_version >= \"3.11\""},
+]
+
+[[package]]
 name = "cfgv"
 version = "3.3.1"
 description = "Validate configuration and produce human readable error messages."
 category = "dev"
 optional = false
 python-versions = ">=3.6.1"
+
+[[package]]
+name = "colorama"
+version = "0.4.6"
+description = "Cross-platform colored terminal text."
+category = "dev"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
+
+[[package]]
+name = "dill"
+version = "0.3.6"
+description = "serialize all of python"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+graph = ["objgraph (>=1.7.2)"]
 
 [[package]]
 name = "distlib"
@@ -36,6 +71,36 @@ python-versions = ">=3.7"
 
 [package.extras]
 license = ["ukkonen"]
+
+[[package]]
+name = "isort"
+version = "5.12.0"
+description = "A Python utility / library to sort Python imports."
+category = "dev"
+optional = false
+python-versions = ">=3.8.0"
+
+[package.extras]
+colors = ["colorama (>=0.4.3)"]
+requirements-deprecated-finder = ["pip-api", "pipreqs"]
+pipfile-deprecated-finder = ["pip-shims (>=0.5.2)", "pipreqs", "requirementslib"]
+plugins = ["setuptools"]
+
+[[package]]
+name = "lazy-object-proxy"
+version = "1.9.0"
+description = "A fast and thorough lazy object proxy."
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
+name = "mccabe"
+version = "0.7.0"
+description = "McCabe checker, plugin for flake8"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
 
 [[package]]
 name = "nodeenv"
@@ -73,12 +138,62 @@ pyyaml = ">=5.1"
 virtualenv = ">=20.10.0"
 
 [[package]]
+name = "pylint"
+version = "2.17.2"
+description = "python code static checker"
+category = "dev"
+optional = false
+python-versions = ">=3.7.2"
+
+[package.dependencies]
+astroid = ">=2.15.2,<=2.17.0-dev0"
+colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
+dill = [
+    {version = ">=0.2", markers = "python_version < \"3.11\""},
+    {version = ">=0.3.6", markers = "python_version >= \"3.11\""},
+]
+isort = ">=4.2.5,<6"
+mccabe = ">=0.6,<0.8"
+platformdirs = ">=2.2.0"
+tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
+tomlkit = ">=0.10.1"
+typing-extensions = {version = ">=3.10.0", markers = "python_version < \"3.10\""}
+
+[package.extras]
+spelling = ["pyenchant (>=3.2,<4.0)"]
+testutils = ["gitpython (>3)"]
+
+[[package]]
 name = "pyyaml"
 version = "6.0"
 description = "YAML parser and emitter for Python"
 category = "dev"
 optional = false
 python-versions = ">=3.6"
+
+[[package]]
+name = "tomli"
+version = "2.0.1"
+description = "A lil' TOML parser"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
+name = "tomlkit"
+version = "0.11.7"
+description = "Style preserving TOML library"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
+name = "typing-extensions"
+version = "4.5.0"
+description = "Backported and Experimental Type Hints for Python 3.7+"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
 
 [[package]]
 name = "virtualenv"
@@ -97,18 +212,37 @@ platformdirs = ">=2.4,<4"
 docs = ["furo (>=2022.12.7)", "proselint (>=0.13)", "sphinx-argparse (>=0.4)", "sphinx (>=6.1.3)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=22.12)"]
 test = ["covdefaults (>=2.2.2)", "coverage-enable-subprocess (>=1)", "coverage (>=7.1)", "flaky (>=3.7)", "packaging (>=23)", "pytest-env (>=0.8.1)", "pytest-freezegun (>=0.4.2)", "pytest-mock (>=3.10)", "pytest-randomly (>=3.12)", "pytest-timeout (>=2.1)", "pytest (>=7.2.1)"]
 
+[[package]]
+name = "wrapt"
+version = "1.15.0"
+description = "Module for decorators, wrappers and monkey patching."
+category = "dev"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "5fcffc902732335ea6813861e75febe71bde5f55954e7fbe13a5c5fbbbe67507"
+content-hash = "b9f3833d4b94855bed08d2ad8e0318179e63de9853fbb1e85566af4d0fd91851"
 
 [metadata.files]
+astroid = []
 cfgv = []
+colorama = []
+dill = []
 distlib = []
 filelock = []
 identify = []
+isort = []
+lazy-object-proxy = []
+mccabe = []
 nodeenv = []
 platformdirs = []
 pre-commit = []
+pylint = []
 pyyaml = []
+tomli = []
+tomlkit = []
+typing-extensions = []
 virtualenv = []
+wrapt = []
