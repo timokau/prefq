@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+
+<html>
+
+  <!-- name browser tab & define button position relative to video -->
+  <head>
+    <title>Lunarlander Toyexample</title>
+    <style>
+      body {
+        background-color: rgb(16, 21, 170);
+        }
+      .video-container {
+        position: relative;
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        }
+      .video-container video{
+        width: 100%;
+        height: auto;
+        }
+      .video {
+        width: 50%;
+        }
+      .video-container .button{
+        position: relative;
+        top: -90%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        -ms-transform: translate(-50%, -50%);
+        border: none;
+        cursor: pointer;
+        }
+    </style>
+  </head>
+
+
+  
+  <!-- define videos & corresponding buttons -->
+  <body>
+
+
+  <div class="video-container">
+
+      <div class="video">
+          <video id="left_video" src="{{ url_for('static', filename='lunarlander_random/01.mp4') }}" controls loop autoplay></video>
+          <button class="button" id="left_preferred" >this is my preferred solution</button>
+        </video>
+      </div>
+
+      <div class="video">
+          <video id="right_video" src="{{ url_for('static', filename='lunarlander_random/02.mp4') }}" controls loop autoplay></video>
+          <button class="button" id="right_preferred" >this is my preferred solution</button>
+        </video>
+      </div>
+
+  </div>
+
+    <script src="{{ url_for('static', filename='web_interface.js') }}"></script>
+    
+  </body>
+  
+</html>
+
+
