@@ -1,11 +1,11 @@
 // Get videos
-var left_preferred = document.getElementById('left_preferred');
-var right_preferred = document.getElementById('right_preferred');
+var on_left_preferred = document.getElementById('left_preferred')
+var on_right_preferred = document.getElementById('right_preferred')
 // Get buttons
-var left_video = document.getElementById('left_video');
-var right_video = document.getElementById('right_video');
+var left_video = document.getElementById('left_video')
+var right_video = document.getElementById('right_video')
 // Use to iterate over videos
-var iterator = 2;
+var iterator = 0;
 
 const videos = [
   "/static/lunarlander_random/01.mp4",
@@ -20,20 +20,49 @@ const videos = [
   "/static/lunarlander_random/10.mp4",
 ];
 
+let is_left_preferred  = new Array(5).fill(null)
+
 
 function changevid() {
-  left_video.setAttribute("src", videos[iterator]);
-  right_video.setAttribute("src", videos[iterator+1]);
   iterator = (iterator+2) % 10;
+  left_video.setAttribute("src", videos[iterator])
+  right_video.setAttribute("src", videos[iterator+1])
+  if(iterator == 0){
+    sendData()
+  }
 }
 
+function sendData() {
+  
+  // Create JavaScript API to create AJAX requests (HTTP request made by browser-resident Javascript)
+  const xhr = new XMLHttpRequest()
+  
+  const data = {
+    is_left_preferred: is_left_preferred,
+  };
 
-// signal handler for buttons
+  // Set the HTTP method and endpoint URL
+  xhr.open('POST', '/')
 
-left_preferred.addEventListener('click', function() {
-  changevid();
-});
+  // Set the http request header (indicates json datatype to receiving server)
+  xhr.setRequestHeader('Content-Type', 'application/json')
 
-right_preferred.addEventListener('click', function() {
-  changevid();
-});
+  // Convert and send data object to JSON string
+  const jsonData = JSON.stringify(data)
+  xhr.send(jsonData)
+}
+
+// signal handlers for buttons
+on_left_preferred.addEventListener('click', function() {
+
+  is_left_preferred[iterator/2] = true
+
+  changevid()
+})
+
+on_right_preferred.addEventListener('click', function() {
+
+  is_left_preferred[iterator/2] = false
+
+  changevid()
+})
