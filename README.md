@@ -1,10 +1,16 @@
 # prefq -- Querying Preferences from Real Humans
 
-## Running example scripts
+## Running the server
 
 ```bash
-poetry run python -m prefq.examples.random_recordings
+poetry install
+poetry run python -m prefq.server
 ```
+
+## Architecture
+
+The high-level architecture is illustrated in the following diagram:
+![prefq-diagram](./figures/prefq_diagram/prefq.svg)
 
 ## Contributing
 
