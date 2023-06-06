@@ -1,68 +1,92 @@
-// Get videos
-var on_left_preferred = document.getElementById('left_preferred')
-var on_right_preferred = document.getElementById('right_preferred')
 // Get buttons
-var left_video = document.getElementById('left_video')
-var right_video = document.getElementById('right_video')
-// Use to iterate over videos
-var iterator = 0;
-
-const videos = [
-  "/static/lunarlander_random/01.mp4",
-  "/static/lunarlander_random/02.mp4",
-  "/static/lunarlander_random/03.mp4",
-  "/static/lunarlander_random/04.mp4",
-  "/static/lunarlander_random/05.mp4",
-  "/static/lunarlander_random/06.mp4",
-  "/static/lunarlander_random/07.mp4",
-  "/static/lunarlander_random/08.mp4",
-  "/static/lunarlander_random/09.mp4",
-  "/static/lunarlander_random/10.mp4",
-];
-
-let is_left_preferred  = new Array(5).fill(null)
+var on_left_preferred       = document.getElementById('left_preferred')
+var on_right_preferred      = document.getElementById('right_preferred')
+// Get videos
+var left_video              = document.getElementById('left_video')
+var right_video             = document.getElementById('right_video')
 
 
-function changevid() {
-  iterator = (iterator+2) % 10;
-  left_video.setAttribute("src", videos[iterator])
-  right_video.setAttribute("src", videos[iterator+1])
-  if(iterator == 0){
-    sendData()
-  }
+let is_left_preferred  = null
+
+
+function send_data() {
+  
+  const xhr = new XMLHttpRequest()                            // Create AJAX request to server   (HTTP request made by browser-resident Javascript)
+  xhr.open('POST', '/')                                       // Set the HTTP method and endpoint URL
+  xhr.setRequestHeader('Content-Type', 'application/json')    // Specify JSON datatype for HTTP header
+
+  // Define http status code behavior
+  xhr.onreadystatechange = function() {
+    
+    if (xhr.status >= 200 && xhr.status < 400 && xhr.readyState === XMLHttpRequest.DONE) // if http status between 200-399 (indicates success)  &&  if request has been sent
+      // Handle successful requests
+      {
+      const response = JSON.parse(xhr.responseText)
+      if(response.success === true)   {console.log('Acknowledgment received')}
+      else                            {console.log('Message transfer failed')}
+      }
+        
+    else
+      // Handle unsuccessful requests
+      {console.log('Request failed with status:', xhr.status)}
+    }
+
+  const data = {is_left_preferred: is_left_preferred,};       // Load user data
+  const jsonData = JSON.stringify(data)                       // Convert user data 
+  xhr.send(jsonData)                                          // Send user data
 }
 
-function sendData() {
-  
-  // Create JavaScript API to create AJAX requests (HTTP request made by browser-resident Javascript)
-  const xhr = new XMLHttpRequest()
-  
-  const data = {
-    is_left_preferred: is_left_preferred,
+
+function request_videos() {
+
+  var xhr = new XMLHttpRequest();       // Create AJAX request to server
+  xhr.open('GET', '/')                  // Set the HTTP method and endpoint URL
+
+  // Define http status code behavior
+  xhr.onreadystatechange = function() {
+
+    if (xhr.status >= 200 && xhr.status < 400 && xhr.readyState === XMLHttpRequest.DONE) // if http status between 200-399 (indicates success)  &&  if request has been sent
+      // Handle successful requests
+      {
+      console.log("Videos requested successfully");
+      const newInterface = xhr.responseText;
+      document.documentElement.innerHTML = newInterface;  // Update the DOM with the new interface
+      attachEventHandlers();                              // Reattach event handlers to the new elements
+      }
+        
+    else 
+      // Handle unsuccessful requests
+      {console.log('Request failed with status:', xhr.status)}
+
   };
 
-  // Set the HTTP method and endpoint URL
-  xhr.open('POST', '/')
-
-  // Set the http request header (indicates json datatype to receiving server)
-  xhr.setRequestHeader('Content-Type', 'application/json')
-
-  // Convert and send data object to JSON string
-  const jsonData = JSON.stringify(data)
-  xhr.send(jsonData)
+  xhr.send(); 
 }
 
-// signal handlers for buttons
-on_left_preferred.addEventListener('click', function() {
+// Signal Handler for Buttons
+function attachEventHandlers() {
+  
+  on_left_preferred  = document.getElementById('left_preferred');
+  on_right_preferred = document.getElementById('right_preferred');
 
-  is_left_preferred[iterator/2] = true
+  on_left_preferred.addEventListener('click', function() {
+    is_left_preferred = true;
+    send_data();
+    request_videos();
+  });
 
-  changevid()
-})
+  on_right_preferred.addEventListener('click', function() {
+    is_left_preferred = false;
+    send_data();
+    request_videos();
+  });
+}
 
-on_right_preferred.addEventListener('click', function() {
 
-  is_left_preferred[iterator/2] = false
+// Attach initial Signal Handler
+attachEventHandlers();
 
-  changevid()
-})
+
+// Calls @app.route("stop") before closing the window
+window.onbeforeunload = () => fetch('/stop');
+
