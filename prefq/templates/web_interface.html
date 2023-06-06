@@ -43,27 +43,45 @@
   <!-- define videos & corresponding buttons -->
   <body>
 
-
-  <div class="video-container">
-
-      <div class="video">
-          <video id="left_video" src="{{ url_for('static', filename='lunarlander_random/01.mp4') }}" controls loop autoplay></video>
-          <button class="button" id="left_preferred" >this is my preferred solution</button>
-        </video>
-      </div>
-
-      <div class="video">
-          <video id="right_video" src="{{ url_for('static', filename='lunarlander_random/02.mp4') }}" controls loop autoplay></video>
-          <button class="button" id="right_preferred" >this is my preferred solution</button>
-        </video>
-      </div>
-
+  <div class="server-variables">
+    <div id="video_filepath_left"       style = "display: none;">{{ video_filepath_left }}</div>
+    <div id="video_filepath_right"      style = "display: none;">{{ video_filepath_right }}</div>
   </div>
 
-    <script src="{{ url_for('static', filename='web_interface.js') }}"></script>
-    
+  
+  <div class="video-container">
+
+    <div class="video">
+        <video id="left_video" src="{{ url_for('static', filename=video_filepath_left) }}" controls loop autoplay></video>
+        <button class="button" id="left_preferred" >this is my preferred solution</button>
+      </video>
+    </div>
+
+    <div class="video">
+        <video id="right_video" src="{{ url_for('static', filename=video_filepath_right) }}" controls loop autoplay></video>
+        <button class="button" id="right_preferred" >this is my preferred solution</button>
+      </video>
+    </div>
+  </div>
+
+
+
+  
+
+    <script src="{{ url_for('static', filename='web_interface.js') }}"> </script>
+      
+    <script>
+      // javascript
+    </script>
+  
   </body>
   
-</html>
+  </html>
+  
+  
+
+  
+
+
 
 
