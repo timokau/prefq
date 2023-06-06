@@ -18,6 +18,7 @@ video_filepaths = [
 def load_web_interface():
     """Renders updated .html interface"""
 
+    # should be replaced by flask session object
     # pylint: disable=global-statement
     global FINISHED_EVALS
 
