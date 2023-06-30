@@ -51,14 +51,15 @@
   
   <div class="video-container">
 
+    <!-- url_for('serve_video', ...) :: calls the serve_video function on the server -->
     <div class="video">
-        <video id="left_video" src="{{ url_for('static', filename=video_filepath_left) }}" controls loop autoplay></video>
+        <video id="left_video" src="{{ url_for('serve_video', filename=video_filepath_left) }}" controls loop autoplay></video>
         <button class="button" id="left_preferred" >this is my preferred solution</button>
       </video>
     </div>
 
     <div class="video">
-        <video id="right_video" src="{{ url_for('static', filename=video_filepath_right) }}" controls loop autoplay></video>
+        <video id="right_video" src="{{ url_for('serve_video', filename=video_filepath_right) }}" controls loop autoplay></video>
         <button class="button" id="right_preferred" >this is my preferred solution</button>
       </video>
     </div>
