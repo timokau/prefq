@@ -3,7 +3,7 @@
 import os
 import json
 import requests
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 query_client = Flask(__name__)
 
@@ -12,6 +12,7 @@ VIDEOS_SENT = 0
 VIDEO_BUFFERSIZE = 10
 
 video_filepaths = [f"{str(i).zfill(2)}.mp4" for i in range(1, VIDEO_BUFFERSIZE + 1)]
+feedback_booleans = []
 
 @query_client.route("/request_videos", methods=["GET"])
 def send_query_to_server():
@@ -49,6 +50,23 @@ def send_query_to_server():
     print("Client: Error at /request_videos    Status code:")
     print(response.status_code)
     return "Failed to send query"
+
+@query_client.route("/receive_feedback", methods=["POST"])
+def receive_feedback_boolean():
+    """Receives client feedback from Server"""
+
+    data = request.json  # Access the JSON data from the request
+    is_left_preferred = data["is_left_preferred"]  # Extract specific data from JSON
+    print("Client: Received Preference Boolean from Server: " + str(is_left_preferred))
+
+    feedback_booleans.append(is_left_preferred)
+    print("Client: Successfully Received Preference Boolean from Server")
+    print("Client: Boolean Array:", end= ' ')
+    for boolean in feedback_booleans:
+        print(boolean, end=' ')
+
+    return "Client: Success: /receive_feedback"
+
 
 if __name__ == "__main__":
     query_client.run(host="127.0.0.1", port=5001, debug=True)
