@@ -1,35 +1,29 @@
 """A webserver that asks the user preference queries."""
 
+import os
+from urllib.parse import unquote
+
 import flask
-from flask import Flask, jsonify
+import requests
+from flask import Flask, jsonify, request
 
-VIDEO_BUFFERSIZE = 10
-FINISHED_EVALS = 0
+QUERY_CLIENT_URL = "http://127.0.0.1:5001/"
 
-app = Flask(__name__, static_url_path="/static")
-
-
-is_evaluated = [False] * VIDEO_BUFFERSIZE
-video_filepaths = [
-    f"/lunarlander_random/{str(i).zfill(2)}.mp4" for i in range(1, VIDEO_BUFFERSIZE + 1)
-]
+app = Flask(__name__)
+app.config["VIDEO_FOLDER"] = "videos"
 
 
-def load_web_interface():
+def load_web_interface(video_filename_left=None, video_filename_right=None):
     """Renders updated .html interface"""
 
-    # should be replaced by flask session object
-    # pylint: disable=global-statement
-    global FINISHED_EVALS
+    if video_filename_left is not None and video_filename_right is not None:
+        print("\nServer: Reached recursive call of load_web_interface()")
 
-    if is_evaluated[(FINISHED_EVALS) % VIDEO_BUFFERSIZE] is False:
-        is_evaluated[(FINISHED_EVALS) % VIDEO_BUFFERSIZE] = True
-        is_evaluated[(FINISHED_EVALS + 1) % VIDEO_BUFFERSIZE] = True
+        video_filepath_left = "videos/" + video_filename_left
+        video_filepath_right = "videos/" + video_filename_right
 
-        video_filepath_left = video_filepaths[(FINISHED_EVALS) % VIDEO_BUFFERSIZE]
-        video_filepath_right = video_filepaths[(FINISHED_EVALS + 1) % VIDEO_BUFFERSIZE]
-
-        FINISHED_EVALS += 2 % VIDEO_BUFFERSIZE
+        print("Server: Rendering " + os.path.join(app.root_path, video_filepath_left))
+        print("Server: Rendering " + os.path.join(app.root_path, video_filepath_right))
 
         return flask.render_template(
             "web_interface.html",
@@ -37,7 +31,25 @@ def load_web_interface():
             video_filepath_right=video_filepath_right,
         )
 
-    return flask.render_template("easteregg.html")
+    # Request new videos from queryClient & receive filepaths
+    response = requests.get(QUERY_CLIENT_URL + "request_videos")
+    filepaths_json = response.json()
+
+    print("Server: Get Request Successful")
+
+    return flask.render_template(
+        "web_interface.html",
+        video_filepath_left=filepaths_json["left_filepath"],
+        video_filepath_right=filepaths_json["right_filepath"],
+    )
+
+
+@app.route("/videos/<path:filename>")
+def serve_video(filename):
+    """Make videos accessible for feedback client (web_interface.html)"""
+
+    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
+    return flask.send_from_directory(video_folder, filename)
 
 
 @app.route("/", methods=["GET"])
@@ -65,6 +77,29 @@ def receive_data():
     return jsonify({"success": True})
 
 
+@app.route("/receive_videos", methods=["POST"])
+def receive_videos():
+    """Receive requested videos"""
+
+    print("\nServer: /receive_videos triggered")
+
+    left_video = request.files.get("left_video")
+    right_video = request.files.get("right_video")
+    print("Server: Successfully received videos")
+
+    # unquote() decodes url-encoded characters - .filename needs to be called to access json text data - strip('"') removes decoded quotation marks
+    left_filename = unquote(request.files.get("left_filepath").filename).strip('"')
+    right_filename = unquote(request.files.get("right_filepath").filename).strip('"')
+    print("Server: Filepaths received")
+
+    left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
+    right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
+    print("Server: Successfully stored videos in local folder")
+    print("Server: Successfully terminated /receive_videos")
+
+    return "Server: Success in /receive_videos"
+
+
 @app.route("/stop")
 def delete_session_url():
     """Define behavior when client closes browser window"""
@@ -78,4 +113,4 @@ def delete_session_url():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)
