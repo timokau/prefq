@@ -63,12 +63,24 @@ def index():
 
 
 @app.route("/", methods=["POST"])
-def receive_data():
-    """Receive evaluations from client"""
+def receive_send_feedback():
+    """Receive feedback from client & send it to Query Client"""
 
+    print("\nServer: receive_send_feedback() triggered")
     data = flask.request.json  # Represents incoming client http request in json format
     is_left_preferred = data["is_left_preferred"]  # Extract JSON data
-    print("Left Preferred: ", is_left_preferred)
+    print("Server: Left Preferred: ", is_left_preferred)
+
+    # Send POST-Request to server
+    print("Server: Sending feedback to Query Client")
+    response = requests.post(QUERY_CLIENT_URL + "receive_feedback", json = data)
+    
+    if response.status_code >= 200 & response.status_code < 400:
+        print("Server: Successfully sent feedback to Query Client\n")
+    else:
+        print("Server: Error sending feedback to Query Client")
+        print(response + "\n")
+        return "Server: Error sending feedback to Query Client"
 
     # check for defective msg transfer
     if is_left_preferred is None:
@@ -87,7 +99,9 @@ def receive_videos():
     right_video = request.files.get("right_video")
     print("Server: Successfully received videos")
 
-    # unquote() decodes url-encoded characters - .filename needs to be called to access json text data - strip('"') removes decoded quotation marks
+    # unquote() decodes url-encoded characters
+    # .filename needs to be called to access json text data 
+    # strip('"') removes decoded quotation marks
     left_filename = unquote(request.files.get("left_filepath").filename).strip('"')
     right_filename = unquote(request.files.get("right_filepath").filename).strip('"')
     print("Server: Filepaths received")
