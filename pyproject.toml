@@ -10,9 +10,9 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-gymnasium = {extras = ["box2d"], version = "^0.28.1"}
 moviepy = "^1.0.3"
 flask = "<2.3" # Since we rely on the before_first_request decorator (https://flask.palletsprojects.com/en/2.2.x/api/?highlight=before_first_request#flask.Flask.before_first_request)
+gym = {extras = ["box2d"], version = "^0.26.2"}
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.2.2"

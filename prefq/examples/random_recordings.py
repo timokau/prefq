@@ -1,6 +1,6 @@
 "Generate recordings of random actions in gym environments." ""
 
-import gymnasium as gym
+import gym
 
 
 def generate_random_episode_recordings(env_name, video_folder, num_episodes):
