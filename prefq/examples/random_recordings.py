@@ -1,5 +1,7 @@
 "Generate recordings of random actions in gym environments." ""
 
+# `gym` is an optional dependency that is hard to set up (see README).
+# pylint: disable=import-error
 import gym
 
 
