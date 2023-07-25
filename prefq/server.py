@@ -11,7 +11,7 @@ QUERY_CLIENT_URL = "http://127.0.0.1:5001/"
 app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
 
-feedback_array = []
+feedback_array = [True, False, False, True, True]
 video_filenames = []
 video_evals = 0
 
@@ -21,16 +21,18 @@ def load_web_interface():
 
     global video_evals
 
-    print("\n\nServer: Started load_web_interface()")
+    available_videos = len(video_filenames) - video_evals
+
+    print("\n\nServer: starting load_web_interface()...")
     print("Server: Video Evals: " + str(video_evals))
-    print("Server: Length Filenames: " + str(len(video_filenames)))
+    print("Server: Availible Videos: " + str(available_videos))
 
     if video_evals < len(video_filenames) & len(video_filenames) > 0:
         # render interface, if unevaluated videos exist
 
         video_evals += 2
 
-        print("Server: Rendering Videos")
+        print("Server: ...terminated load_web_interface()")
         return flask.render_template(
             "web_interface.html",
             video_filepath_left=video_filenames[video_evals - 2],
@@ -57,10 +59,9 @@ def receive_feedback():
 
     global feedback_array
 
-    print("\n\nServer: receive_feedback() triggered")
+    print("\n\nServer: Starting receive_feedback()")
     data = flask.request.json  # Represents incoming client http request in json format
     is_left_preferred = data["is_left_preferred"]  # Extract JSON data
-    print("Server: Left Preferred: ", is_left_preferred)
 
     # check for defective msg transfer
     if is_left_preferred is None:
@@ -68,6 +69,7 @@ def receive_feedback():
 
     feedback_array.append(is_left_preferred)
     print(feedback_array)
+    print("Server: Terminated receive_feedback()")
 
     return jsonify({"success": True})
 
@@ -76,7 +78,7 @@ def receive_feedback():
 def send_feedback():
     """Sends feedback to Query Client"""
 
-    print("\n\nServer: Started send_feedback()")
+    print("\n\nServer: Starting send_feedback()")
     feedback_json = {"feedback_array": feedback_array}
 
     print("Server: Terminated send_feedback()")
