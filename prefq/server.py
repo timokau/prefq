@@ -4,7 +4,6 @@ import os
 from urllib.parse import unquote
 
 import flask
-import requests
 from flask import Flask, jsonify, request
 
 QUERY_CLIENT_URL = "http://127.0.0.1:5001/"
@@ -12,44 +11,34 @@ QUERY_CLIENT_URL = "http://127.0.0.1:5001/"
 app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
 
+feedback_array = []
+video_filenames = []
+video_evals = 0
 
-def load_web_interface(video_filename_left=None, video_filename_right=None):
-    """Renders updated .html interface"""
 
-    if video_filename_left is not None and video_filename_right is not None:
-        print("\nServer: Reached recursive call of load_web_interface()")
+def load_web_interface():
+    """Render .html interface for Feedback Client"""
 
-        video_filepath_left = "videos/" + video_filename_left
-        video_filepath_right = "videos/" + video_filename_right
+    global video_evals
 
-        print("Server: Rendering " + os.path.join(app.root_path, video_filepath_left))
-        print("Server: Rendering " + os.path.join(app.root_path, video_filepath_right))
+    print("\n\nServer: Started load_web_interface()")
+    print("Server: Video Evals: " + str(video_evals))
+    print("Server: Length Filenames: " + str(len(video_filenames)))
 
+    if video_evals < len(video_filenames) & len(video_filenames) > 0:
+        # render interface, if unevaluated videos exist
+
+        video_evals += 2
+
+        print("Server: Rendering Videos")
         return flask.render_template(
             "web_interface.html",
-            video_filepath_left=video_filepath_left,
-            video_filepath_right=video_filepath_right,
+            video_filepath_left=video_filenames[video_evals - 2],
+            video_filepath_right=video_filenames[video_evals - 1],
         )
 
-    # Request new videos from queryClient & receive filepaths
-    response = requests.get(QUERY_CLIENT_URL + "request_videos")
-    filepaths_json = response.json()
-
-    print("Server: Get Request Successful")
-
-    return flask.render_template(
-        "web_interface.html",
-        video_filepath_left=filepaths_json["left_filepath"],
-        video_filepath_right=filepaths_json["right_filepath"],
-    )
-
-
-@app.route("/videos/<path:filename>")
-def serve_video(filename):
-    """Make videos accessible for feedback client (web_interface.html)"""
-
-    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
-    return flask.send_from_directory(video_folder, filename)
+    print("Server: Rendering Easteregg")
+    return flask.render_template("easteregg.html")
 
 
 @app.route("/", methods=["GET"])
@@ -62,56 +51,68 @@ def index():
     return response  # Update Client Interface
 
 
-@app.route("/", methods=["POST"])
-def receive_send_feedback():
-    """Receive feedback from client & send it to Query Client"""
+@app.route("/receive_feedback", methods=["POST"])
+def receive_feedback():
+    """Receive and store feedback from feedback client"""
 
-    print("\nServer: receive_send_feedback() triggered")
+    global feedback_array
+
+    print("\n\nServer: receive_feedback() triggered")
     data = flask.request.json  # Represents incoming client http request in json format
     is_left_preferred = data["is_left_preferred"]  # Extract JSON data
     print("Server: Left Preferred: ", is_left_preferred)
-
-    # Send POST-Request to server
-    print("Server: Sending feedback to Query Client")
-    response = requests.post(QUERY_CLIENT_URL + "receive_feedback", json = data)
-    
-    if response.status_code >= 200 & response.status_code < 400:
-        print("Server: Successfully sent feedback to Query Client\n")
-    else:
-        print("Server: Error sending feedback to Query Client")
-        print(response + "\n")
-        return "Server: Error sending feedback to Query Client"
 
     # check for defective msg transfer
     if is_left_preferred is None:
         return jsonify({"success": False})
 
+    feedback_array.append(is_left_preferred)
+    print(feedback_array)
+
     return jsonify({"success": True})
+
+
+@app.route("/request_feedback", methods=["GET"])
+def send_feedback():
+    """Sends feedback to Query Client"""
+
+    print("\n\nServer: Started send_feedback()")
+    feedback_json = {"feedback_array": feedback_array}
+
+    print("Server: Terminated send_feedback()")
+    return jsonify(feedback_json)
 
 
 @app.route("/receive_videos", methods=["POST"])
 def receive_videos():
     """Receive requested videos"""
 
-    print("\nServer: /receive_videos triggered")
-
-    left_video = request.files.get("left_video")
-    right_video = request.files.get("right_video")
-    print("Server: Successfully received videos")
+    print("\n\nServer: Started receive_videos() ")
 
     # unquote() decodes url-encoded characters
-    # .filename needs to be called to access json text data 
+    # .filename needs to be called to access json text data
     # strip('"') removes decoded quotation marks
     left_filename = unquote(request.files.get("left_filepath").filename).strip('"')
     right_filename = unquote(request.files.get("right_filepath").filename).strip('"')
-    print("Server: Filepaths received")
+    left_video = request.files.get("left_video")
+    right_video = request.files.get("right_video")
+    print(
+        "Server: Videos Received: "
+        + "\n    (Left): "
+        + left_filename
+        + "\n   (Right): "
+        + right_filename
+    )
 
+    print("Server: Storing videos locally...")
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
-    print("Server: Successfully stored videos in local folder")
-    print("Server: Successfully terminated /receive_videos")
+    video_filenames.append(left_filename)
+    video_filenames.append(right_filename)
+    print("Server: ...Videos stored locally")
 
-    return "Server: Success in /receive_videos"
+    print("Server: Terminated receive_videos()")
+    return "Server: Terminated receive_videos()"
 
 
 @app.route("/stop")
@@ -124,6 +125,14 @@ def delete_session_url():
     flask.session.clear()  # Delete session
 
     return response
+
+
+@app.route("/videos/<path:filename>")
+def serve_video(filename):
+    """Make videos accessible for feedback client (web_interface.html)"""
+
+    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
+    return flask.send_from_directory(video_folder, filename)
 
 
 if __name__ == "__main__":
