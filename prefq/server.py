@@ -27,17 +27,21 @@ def before_first_request():
 app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
 
-@app.route("/videos/<path:filename>")
-def serve_video(filename):
-    """Make videos accessible for feedback client (web_interface.html)"""
+@app.route("/", methods=["GET"])
+def index():
+    """Define GET-Request behavior"""
 
-    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
-    return flask.send_from_directory(video_folder, filename)
+    response_data = load_web_interface()  # Load new Interface
+    response = app.make_response(response_data)
+
+    return response  # Update Client Interface
 
 
 def load_web_interface():
     """Render .html interface for Feedback Client"""
 
+    # should be replaced by flask session object
+    # pylint: disable=global-statement
     global video_evals
 
     available_videos = len(video_filenames) - video_evals
@@ -59,48 +63,6 @@ def load_web_interface():
 
     print("Server: Rendering Easteregg")
     return flask.render_template("easteregg.html")
-
-
-@app.route("/", methods=["GET"])
-def index():
-    """Define GET-Request behavior"""
-
-    response_data = load_web_interface()  # Load new Interface
-    response = app.make_response(response_data)
-
-    return response  # Update Client Interface
-
-
-@app.route("/receive_feedback", methods=["POST"])
-def receive_feedback():
-    """Receive and store feedback from feedback client"""
-
-    global feedback_array
-
-    print("\n\nServer: Starting receive_feedback() [...]")
-    data = flask.request.json  # Represents incoming client http request in json format
-    is_left_preferred = data["is_left_preferred"]  # Extract JSON data
-
-    # check for defective msg transfer
-    if is_left_preferred is None:
-        return jsonify({"success": False})
-
-    feedback_array.append(is_left_preferred)
-    print(feedback_array)
-    print("Server: [...] Terminating receive_feedback()")
-
-    return jsonify({"success": True})
-
-
-@app.route("/request_feedback", methods=["GET"])
-def send_feedback():
-    """Sends feedback to Query Client"""
-
-    print("\n\nServer: Starting send_feedback() [...]")
-    feedback_json = {"feedback_array": feedback_array}
-
-    print("Server: [...] Terminating send_feedback()")
-    return jsonify(feedback_json)
 
 
 @app.route("/receive_videos", methods=["POST"])
@@ -134,6 +96,48 @@ def receive_videos():
 
     print("Server: [...] Terminating receive_videos()")
     return "Server: [...] Terminating receive_videos()"
+
+
+@app.route("/feedback", methods=["POST"])
+def receive_feedback():
+    """Receive and store feedback from feedback client"""
+
+    # should be replaced by flask session object
+    # pylint: disable=global-statement
+    global feedback_array
+
+    print("\n\nServer: Starting receive_feedback() [...]")
+    data = flask.request.json  # Represents incoming client http request in json format
+    is_left_preferred = data["is_left_preferred"]  # Extract JSON data
+
+    # check for defective msg transfer
+    if is_left_preferred is None:
+        return jsonify({"success": False})
+
+    feedback_array.append(is_left_preferred)
+    print(feedback_array)
+    print("Server: [...] Terminating receive_feedback()")
+
+    return jsonify({"success": True})
+
+
+@app.route("/feedback", methods=["GET"])
+def send_feedback():
+    """Sends feedback to Query Client"""
+
+    print("\n\nServer: Starting send_feedback() [...]")
+    feedback_json = {"feedback_array": feedback_array}
+
+    print("Server: [...] Terminating send_feedback()")
+    return jsonify(feedback_json)
+
+
+@app.route("/videos/<path:filename>")
+def serve_video(filename):
+    """Make videos accessible for feedback client (web_interface.html)"""
+
+    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
+    return flask.send_from_directory(video_folder, filename)
 
 
 @app.route("/stop")
