@@ -9,7 +9,6 @@ import requests
 QUERY_SERVER_URL = "http://127.0.0.1:5000/"
 VIDEO_BUFFERSIZE = 10
 
-
 root_path = os.path.dirname(os.path.abspath(__file__))
 video_filenames = [f"{str(i).zfill(2)}.mp4" for i in range(1, VIDEO_BUFFERSIZE + 1)]
 feedback_array = []
@@ -22,7 +21,7 @@ def send_videos():
 
     print("\n\nClient: Starting send_videos() [...]\n")
 
-    for i in range(1, VIDEO_BUFFERSIZE // 2 + 1):
+    for i in range(1, len(video_filenames) // 2 + 1):
         # Prepare POST-Request Content
         left_video_file_path = os.path.join(
             root_path, "videos/lunarlander_random/", video_filenames[videos_sent]
@@ -85,7 +84,7 @@ def request_feedback():
     global feedback_array
     print("\n\nClient: Starting request_feedback() [...]")
 
-    response = requests.get(QUERY_SERVER_URL + "request_feedback", timeout=10)
+    response = requests.get(QUERY_SERVER_URL + "feedback", timeout=10)
 
     if response.status_code == 200:
         print("Client: Receiving feedback data...")
