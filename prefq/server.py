@@ -29,7 +29,7 @@ def before_first_request():
 def index():
     """Define GET-Request behavior"""
 
-    response_data = load_web_interface()  # Load new Interface
+    response_data = load_web_interface()
     response = app.make_response(response_data)
 
     return response  # Update Client Interface
@@ -46,7 +46,7 @@ def load_web_interface():
     is_video_available = available_videos > 0 and len(video_filenames) != 0
 
     print("\n\nServer: Starting load_web_interface() [...] ")
-    print("Server: Video Evals: " + str(video_evals))
+    print("Server: Evaluated Videos: " + str(video_evals))
     print("Server: Available Videos: " + str(available_videos))
 
     if is_video_available:
@@ -67,24 +67,19 @@ def load_web_interface():
 def receive_videos():
     """Receive new queries from a Query Client."""
 
-    print("\n\nServer: Starting receive_videos() [...] ")
+    print("\n\nServer: Starting receive_videos() [...]")
 
     # unquote() decodes url-encoded characters
     # .filename needs to be called to access json text data
     # strip('"') removes decoded quotation marks
+    print("Server: Receiving videos...")
     left_filename = unquote(request.files.get("left_filepath").filename).strip('"')
     right_filename = unquote(request.files.get("right_filepath").filename).strip('"')
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
-    print(
-        "Server: Videos Received: "
-        + "\n    (Left): "
-        + left_filename
-        + "\n   (Right): "
-        + right_filename
-    )
+    print("    (Left): " + left_filename + "\n   (Right): " + right_filename)
+    print("Server: ...Videos received")
 
-    print("Server: Storing videos locally... ")
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
     video_filenames.append(left_filename)
@@ -108,13 +103,16 @@ def receive_feedback():
     """Receive and store feedback from feedback client"""
 
     print("\n\nServer: Starting receive_feedback() [...]")
+
+    print("Server: Receiving feedback")
     data = flask.request.json  # Represents incoming client http request in json format
     is_left_preferred = data["is_left_preferred"]  # Extract received JSON data
     if is_left_preferred is None:  # Check for defective msg transfer
         return jsonify({"success": False})
-
     feedback_array.append(is_left_preferred)
-    print("     Feedback Values: " + str(feedback_array))
+    print("Server: Feedback stored")
+    print("        Feedback Values: " + str(feedback_array))
+
     print("Server: [...] Terminating receive_feedback()")
 
     return jsonify({"success": True})
@@ -125,12 +123,13 @@ def send_feedback():
     """Sends feedback to Query Client"""
 
     print("\n\nServer: Starting send_feedback() [...]")
+
     feedback_copy = feedback_array[:]
     feedback_array.clear()
-
     feedback_json = {"feedback_array": feedback_copy}
 
     print("Server: [...] Terminating send_feedback()")
+
     return jsonify(feedback_json)
 
 

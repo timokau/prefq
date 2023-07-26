@@ -14,9 +14,9 @@ VIDEO_FILENAMES = [f"{str(i).zfill(2)}.mp4" for i in range(1, AVAILABLE_VIDEOS +
 def send_videos():
     """POST-Request: Send videos to Query Server"""
 
-    videos_sent = 0
-
     print("\n\nClient: Starting send_videos() [...]\n")
+
+    videos_sent = 0
 
     for i in range(1, AVAILABLE_VIDEOS // 2 + 1):
         # Prepare POST-Request Content
@@ -59,18 +59,17 @@ def send_videos():
 
         videos_sent += 2
 
-        print("Client: " + f"{i:02}" + " Sending POST-Request to server ")
+        print("Client: " + f"{i:02}" + " Sending data to Server")
         response = requests.post(QUERY_SERVER_URL + "videos", files=payload, timeout=10)
-        print("Client: " + f"{i:02}" + " Payload Transferred")
 
         if response.status_code >= 200 & response.status_code < 400:
-            print("Client: " + f"{i:02}" + " Video Pair Sent")
+            print("Client: " + f"{i:02}" + " Payload transferred")
         else:
             print("Client: Error: send_videos()    Status code:")
             print(response.status_code)
         print("")
 
-    print("Client: [...] Terminating send_videos()\n")
+    print("Client: [...] Terminating send_videos()")
 
 
 def request_feedback():
