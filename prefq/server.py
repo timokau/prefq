@@ -7,13 +7,13 @@ import flask
 from flask import Flask, jsonify, request
 
 QUERY_CLIENT_URL = "http://127.0.0.1:5001/"
+VIDEO_EVALS = 0
 
 app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
 
 feedback_array = [True, False, False, True, True]
 video_filenames = []
-video_evals = 0
 
 
 @app.before_first_request
@@ -24,8 +24,10 @@ def before_first_request():
     if not os.path.exists(app.config["VIDEO_FOLDER"]):
         os.mkdir(app.config["VIDEO_FOLDER"])
 
+
 app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -42,23 +44,23 @@ def load_web_interface():
 
     # should be replaced by flask session object
     # pylint: disable=global-statement
-    global video_evals
+    global VIDEO_EVALS
 
-    available_videos = len(video_filenames) - video_evals
+    available_videos = len(video_filenames) - VIDEO_EVALS
     is_video_available = available_videos > 0 and len(video_filenames) != 0
 
     print("\n\nServer: Starting load_web_interface() [...] ")
-    print("Server: Video Evals: " + str(video_evals))
+    print("Server: Video Evals: " + str(VIDEO_EVALS))
     print("Server: Available Videos: " + str(available_videos))
 
     if is_video_available:
-        video_evals += 2
+        VIDEO_EVALS += 2
 
         print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
-            video_filepath_left=video_filenames[video_evals - 2],
-            video_filepath_right=video_filenames[video_evals - 1],
+            video_filepath_left=video_filenames[VIDEO_EVALS - 2],
+            video_filepath_right=video_filenames[VIDEO_EVALS - 1],
         )
 
     print("Server: Rendering Easteregg")
@@ -104,7 +106,6 @@ def receive_feedback():
 
     # should be replaced by flask session object
     # pylint: disable=global-statement
-    global feedback_array
 
     print("\n\nServer: Starting receive_feedback() [...]")
     data = flask.request.json  # Represents incoming client http request in json format
@@ -150,14 +151,6 @@ def delete_session_url():
     flask.session.clear()  # Delete session
 
     return response
-
-
-@app.route("/videos/<path:filename>")
-def serve_video(filename):
-    """Make videos accessible for feedback client (web_interface.html)"""
-
-    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
-    return flask.send_from_directory(video_folder, filename)
 
 
 if __name__ == "__main__":
