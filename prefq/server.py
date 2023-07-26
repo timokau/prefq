@@ -10,6 +10,10 @@ app = Flask(__name__)
 
 app.config["VIDEO_FOLDER"] = "videos"
 
+# Global counter variable needed for keeping track of evaluated videos
+# In future alternative solution shall be implemented (eg session variable)
+# Pylint does not like globals and thinks every global variabl should be a constant (all uppercase)
+# Therefore we need to ignore invalid-name here
 # pylint: disable=invalid-name
 video_evals = 0
 feedback_array = []
@@ -131,15 +135,6 @@ def send_feedback():
     print("Server: [...] Terminating send_feedback()")
 
     return jsonify(feedback_json)
-
-
-@app.route("/stop")
-def delete_session_url():
-    """Define behavior when client closes browser window"""
-
-    # response = flask.make_response()
-    # flask.session.clear()  # Delete session
-    # return response
 
 
 if __name__ == "__main__":
