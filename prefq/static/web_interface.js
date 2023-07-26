@@ -4,7 +4,8 @@ var on_right_preferred      = document.getElementById('right_preferred')
 // Get videos
 var left_video              = document.getElementById('left_video')
 var right_video             = document.getElementById('right_video')
-
+// Get filename
+var video_filename_left       = document.getElementById("video_filename_right").textContent;
 
 let is_left_preferred  = null
 
@@ -12,7 +13,7 @@ let is_left_preferred  = null
 function send_data() {
   
   const xhr = new XMLHttpRequest()                            // Create AJAX request to server   (HTTP request made by browser-resident Javascript)
-  xhr.open('POST', '/')                                       // Set the HTTP method and endpoint URL
+  xhr.open('POST', '/feedback')                               // Set the HTTP method and endpoint URL
   xhr.setRequestHeader('Content-Type', 'application/json')    // Specify JSON datatype for HTTP header
 
   // Define http status code behavior
@@ -31,9 +32,12 @@ function send_data() {
       {console.log('Request failed with status:', xhr.status)}
     }
 
-  const data = {is_left_preferred: is_left_preferred,};       // Load user data
-  const jsonData = JSON.stringify(data)                       // Convert user data 
-  xhr.send(jsonData)                                          // Send user data
+  const data = {                                 // Prepare user data
+    is_left_preferred: is_left_preferred,
+    video_filename_left: video_filename_left,
+    };
+  const jsonData = JSON.stringify(data)          // Convert user data 
+  xhr.send(jsonData)                             // Send user data to Server
 }
 
 
@@ -63,11 +67,12 @@ function request_videos() {
   xhr.send(); 
 }
 
-// Signal Handler for Buttons
+
 function attachEventHandlers() {
   
   on_left_preferred  = document.getElementById('left_preferred');
   on_right_preferred = document.getElementById('right_preferred');
+  video_filename_left = document.getElementById("video_filename_right").textContent;
 
   on_left_preferred.addEventListener('click', function() {
     is_left_preferred = true;
@@ -85,8 +90,3 @@ function attachEventHandlers() {
 
 // Attach initial Signal Handler
 attachEventHandlers();
-
-
-// Calls @app.route("stop") before closing the window
-window.onbeforeunload = () => fetch('/stop');
-
