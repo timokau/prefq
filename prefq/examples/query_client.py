@@ -91,9 +91,11 @@ def request_feedback():
         feedback_data = response.json()
         print("Client: Storing feedback data...")
         feedback_array = feedback_data["FEEDBACK_ARRAY"]
+        for i in feedback_array:
+            FEEDBACK_ARRAY.append(i)
         print("Client: ...feedback data stored")
 
-        print("Client: Feedback Data:", feedback_array)
+        print("Client: Feedback Data:", FEEDBACK_ARRAY)
         print("Client: [...] Terminating request_feedback()")
         return "Client: [...] Terminating request_feedback()"
 

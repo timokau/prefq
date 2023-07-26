@@ -117,7 +117,10 @@ def send_feedback():
     """Sends feedback to Query Client"""
 
     print("\n\nServer: Starting send_feedback() [...]")
-    feedback_json = {"FEEDBACK_ARRAY": FEEDBACK_ARRAY}
+    feedback_copy = FEEDBACK_ARRAY[:]
+    FEEDBACK_ARRAY.clear()
+
+    feedback_json = {"FEEDBACK_ARRAY": feedback_copy}
 
     print("Server: [...] Terminating send_feedback()")
     return jsonify(feedback_json)
