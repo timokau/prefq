@@ -141,12 +141,9 @@ def serve_video(filename):
 def delete_session_url():
     """Define behavior when client closes browser window"""
 
-    response = flask.make_response()
-
-    response.set_cookie("session", "", expires=0)  # Delete cookies
-    flask.session.clear()  # Delete session
-
-    return response
+    # response = flask.make_response()
+    # flask.session.clear()  # Delete session
+    # return response
 
 
 if __name__ == "__main__":
