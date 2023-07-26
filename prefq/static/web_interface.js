@@ -4,9 +4,8 @@ var on_right_preferred      = document.getElementById('right_preferred')
 // Get videos
 var left_video              = document.getElementById('left_video')
 var right_video             = document.getElementById('right_video')
-// Get filenames
-var video_filename_left       = document.getElementById("video_filename_left").textContent;
-var video_filename_right      = document.getElementById("video_filename_right").textContent;
+// Get filename
+var video_filename_left       = document.getElementById("video_filename_right").textContent;
 
 let is_left_preferred  = null
 
@@ -33,9 +32,12 @@ function send_data() {
       {console.log('Request failed with status:', xhr.status)}
     }
 
-  const data = {is_left_preferred: is_left_preferred,};       // Load user data
-  const jsonData = JSON.stringify(data)                       // Convert user data 
-  xhr.send(jsonData)                                          // Send user data
+  const data = {                                 // Prepare user data
+    is_left_preferred: is_left_preferred,
+    video_filename_left: video_filename_left,
+    };
+  const jsonData = JSON.stringify(data)          // Convert user data 
+  xhr.send(jsonData)                             // Send user data to Server
 }
 
 

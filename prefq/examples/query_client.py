@@ -95,8 +95,8 @@ def request_feedback():
 
 def main():
     """Send the example queries and poll for feedback."""
-    send_videos()
     request_feedback()
+    send_videos()
 
 
 if __name__ == "__main__":
