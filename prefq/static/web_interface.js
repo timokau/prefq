@@ -88,5 +88,5 @@ attachEventHandlers();
 
 
 // Calls @app.route("stop") before closing the window
-window.onbeforeunload = () => fetch('/stop');
+// window.onbeforeunload = () => fetch('/stop');
 
