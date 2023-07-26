@@ -17,7 +17,7 @@ app.config["VIDEO_FOLDER"] = "videos"
 # pylint: disable=invalid-name
 video_evals = 0
 feedback_array = []
-video_filenames = []
+filenames_array = []
 
 
 @app.before_first_request
@@ -46,8 +46,8 @@ def load_web_interface():
     # pylint: disable=global-statement
     global video_evals
 
-    available_videos = len(video_filenames) - video_evals
-    is_video_available = available_videos > 0 and len(video_filenames) != 0
+    available_videos = len(filenames_array) - video_evals
+    is_video_available = available_videos > 0 and len(filenames_array) != 0
 
     print("\n\nServer: Starting load_web_interface() [...] ")
     print("Server: Evaluated Videos: " + str(video_evals))
@@ -59,8 +59,8 @@ def load_web_interface():
         print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
-            video_filename_left=video_filenames[video_evals - 2],
-            video_filename_right=video_filenames[video_evals - 1],
+            video_filename_left=filenames_array[video_evals - 2],
+            video_filename_right=filenames_array[video_evals - 1],
         )
 
     print("Server: [...] Rendering Easteregg")
@@ -86,8 +86,11 @@ def receive_videos():
 
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
-    video_filenames.append(left_filename)
-    video_filenames.append(right_filename)
+    filenames_array.append(left_filename)
+    filenames_array.append(right_filename)
+    # Add empty feedback value for newly received, unevaluated data
+    feedback_array.append(None)
+
     print("Server: ...Videos stored locally")
 
     print("Server: [...] Terminating receive_videos()")
@@ -110,10 +113,19 @@ def receive_feedback():
 
     print("Server: Receiving feedback")
     data = flask.request.json  # Represents incoming client http request in json format
-    is_left_preferred = data["is_left_preferred"]  # Extract received JSON data
-    if is_left_preferred is None:  # Check for defective msg transfer
+
+    # Extract received JSON data
+    is_left_preferred = data["is_left_preferred"]
+    video_filename_left = data["video_filename_left"]
+    video_index_left = int(video_filename_left.split(".")[0]) - 1
+    batch_index = video_index_left // 2
+
+    # Check for defective msg transfer
+    if is_left_preferred is None:
         return jsonify({"success": False})
-    feedback_array.append(is_left_preferred)
+
+    # Save feedback at corresponding index
+    feedback_array[batch_index] = is_left_preferred
     print("Server: Feedback stored")
     print("        Feedback Values: " + str(feedback_array))
 
