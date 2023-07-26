@@ -4,7 +4,9 @@ var on_right_preferred      = document.getElementById('right_preferred')
 // Get videos
 var left_video              = document.getElementById('left_video')
 var right_video             = document.getElementById('right_video')
-
+// Get filenames
+var video_filename_left       = document.getElementById("video_filename_left").textContent;
+var video_filename_right      = document.getElementById("video_filename_right").textContent;
 
 let is_left_preferred  = null
 
@@ -63,7 +65,7 @@ function request_videos() {
   xhr.send(); 
 }
 
-// Signal Handler for Buttons
+
 function attachEventHandlers() {
   
   on_left_preferred  = document.getElementById('left_preferred');

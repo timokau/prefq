@@ -59,8 +59,8 @@ def load_web_interface():
         print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
-            video_filepath_left=video_filenames[video_evals - 2],
-            video_filepath_right=video_filenames[video_evals - 1],
+            video_filename_left=video_filenames[video_evals - 2],
+            video_filename_right=video_filenames[video_evals - 1],
         )
 
     print("Server: [...] Rendering Easteregg")
