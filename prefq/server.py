@@ -25,10 +25,6 @@ def before_first_request():
         os.mkdir(app.config["VIDEO_FOLDER"])
 
 
-app = Flask(__name__)
-app.config["VIDEO_FOLDER"] = "videos"
-
-
 @app.route("/", methods=["GET"])
 def index():
     """Define GET-Request behavior"""
