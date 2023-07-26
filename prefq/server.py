@@ -36,7 +36,7 @@ def index():
 
 
 def load_web_interface():
-    """Render .html interface for Feedback Client"""
+    """Send HTML interface to Feedback Client"""
 
     # should be replaced by flask session object
     # pylint: disable=global-statement
