@@ -12,7 +12,7 @@ let is_left_preferred  = null
 function send_data() {
   
   const xhr = new XMLHttpRequest()                            // Create AJAX request to server   (HTTP request made by browser-resident Javascript)
-  xhr.open('POST', '/')                                       // Set the HTTP method and endpoint URL
+  xhr.open('POST', '/feedback')                               // Set the HTTP method and endpoint URL
   xhr.setRequestHeader('Content-Type', 'application/json')    // Specify JSON datatype for HTTP header
 
   // Define http status code behavior
