@@ -1,18 +1,14 @@
-"""Query Client: A webserver for receiving RL-Feedback & sending videos"""
+"""An example of a query client that sends queries to the server and polls the results."""
 
 import json
 import os
 
 import requests
 
-# Customizable Parameters
+AVAILABLE_VIDEOS = 10
 QUERY_SERVER_URL = "http://127.0.0.1:5000/"
-VIDEO_BUFFERSIZE = 10
-
-# Initial parameters
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-FEEDBACK_ARRAY = []
-VIDEO_FILENAMES = [f"{str(i).zfill(2)}.mp4" for i in range(1, VIDEO_BUFFERSIZE + 1)]
+VIDEO_FILENAMES = [f"{str(i).zfill(2)}.mp4" for i in range(1, AVAILABLE_VIDEOS + 1)]
 
 
 def send_videos():
@@ -22,7 +18,7 @@ def send_videos():
 
     print("\n\nClient: Starting send_videos() [...]\n")
 
-    for i in range(1, len(VIDEO_FILENAMES) // 2 + 1):
+    for i in range(1, AVAILABLE_VIDEOS // 2 + 1):
         # Prepare POST-Request Content
         left_video_file_path = os.path.join(
             ROOT_PATH, "videos/lunarlander_random/", VIDEO_FILENAMES[videos_sent]
@@ -64,9 +60,7 @@ def send_videos():
         videos_sent += 2
 
         print("Client: " + f"{i:02}" + " Sending POST-Request to server ")
-        response = requests.post(
-            QUERY_SERVER_URL + "receive_videos", files=payload, timeout=10
-        )
+        response = requests.post(QUERY_SERVER_URL + "videos", files=payload, timeout=10)
         print("Client: " + f"{i:02}" + " Payload Transferred")
 
         if response.status_code >= 200 & response.status_code < 400:
@@ -89,20 +83,22 @@ def request_feedback():
     if response.status_code == 200:
         print("Client: Receiving feedback data...")
         feedback_data = response.json()
-        print("Client: Storing feedback data...")
-        feedback_array = feedback_data["FEEDBACK_ARRAY"]
-        for i in feedback_array:
-            FEEDBACK_ARRAY.append(i)
-        print("Client: ...feedback data stored")
+        print("Client: Storing Feedback Data")
+        feedback_array = feedback_data["feedback_array"]
+        print("        Feedback Data:", feedback_array)
 
-        print("Client: Feedback Data:", FEEDBACK_ARRAY)
-        print("Client: [...] Terminating request_feedback()")
+        print("Client: [...] Terminating request_feedback()\n")
         return "Client: [...] Terminating request_feedback()"
 
     print("Client: Request failed with status code: ", response.status_code)
     return "Client: Reqeuest in request_feedback() failed"
 
 
-if __name__ == "__main__":
+def main():
+    """Send the example queries and poll for feedback."""
     send_videos()
     request_feedback()
+
+
+if __name__ == "__main__":
+    main()

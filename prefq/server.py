@@ -6,13 +6,14 @@ from urllib.parse import unquote
 import flask
 from flask import Flask, jsonify, request
 
-# Initialize global variables
-VIDEO_EVALS = 0
-FEEDBACK_ARRAY = []
-VIDEO_FILENAMES = []
-
 app = Flask(__name__)
+
 app.config["VIDEO_FOLDER"] = "videos"
+
+# pylint: disable=invalid-name
+video_evals = 0
+feedback_array = []
+video_filenames = []
 
 
 @app.before_first_request
@@ -39,32 +40,32 @@ def load_web_interface():
 
     # should be replaced by flask session object
     # pylint: disable=global-statement
-    global VIDEO_EVALS
+    global video_evals
 
-    available_videos = len(VIDEO_FILENAMES) - VIDEO_EVALS
-    is_video_available = available_videos > 0 and len(VIDEO_FILENAMES) != 0
+    available_videos = len(video_filenames) - video_evals
+    is_video_available = available_videos > 0 and len(video_filenames) != 0
 
     print("\n\nServer: Starting load_web_interface() [...] ")
-    print("Server: Video Evals: " + str(VIDEO_EVALS))
+    print("Server: Video Evals: " + str(video_evals))
     print("Server: Available Videos: " + str(available_videos))
 
     if is_video_available:
-        VIDEO_EVALS += 2
+        video_evals += 2
 
         print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
-            video_filepath_left=VIDEO_FILENAMES[VIDEO_EVALS - 2],
-            video_filepath_right=VIDEO_FILENAMES[VIDEO_EVALS - 1],
+            video_filepath_left=video_filenames[video_evals - 2],
+            video_filepath_right=video_filenames[video_evals - 1],
         )
 
-    print("Server: Rendering Easteregg")
+    print("Server: [...] Rendering Easteregg")
     return flask.render_template("easteregg.html")
 
 
-@app.route("/receive_videos", methods=["POST"])
+@app.route("/videos", methods=["POST"])
 def receive_videos():
-    """Receive requested videos"""
+    """Receive new queries from a Query Client."""
 
     print("\n\nServer: Starting receive_videos() [...] ")
 
@@ -73,7 +74,6 @@ def receive_videos():
     # strip('"') removes decoded quotation marks
     left_filename = unquote(request.files.get("left_filepath").filename).strip('"')
     right_filename = unquote(request.files.get("right_filepath").filename).strip('"')
-    print("filenames received")
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
     print(
@@ -87,12 +87,20 @@ def receive_videos():
     print("Server: Storing videos locally... ")
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
-    VIDEO_FILENAMES.append(left_filename)
-    VIDEO_FILENAMES.append(right_filename)
+    video_filenames.append(left_filename)
+    video_filenames.append(right_filename)
     print("Server: ...Videos stored locally")
 
     print("Server: [...] Terminating receive_videos()")
     return "Server: [...] Terminating receive_videos()"
+
+
+@app.route("/videos/<path:filename>", methods=["GET"])
+def serve_video(filename):
+    """Make videos accessible for feedback client (web_interface.html)"""
+
+    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
+    return flask.send_from_directory(video_folder, filename)
 
 
 @app.route("/feedback", methods=["POST"])
@@ -105,8 +113,8 @@ def receive_feedback():
     if is_left_preferred is None:  # Check for defective msg transfer
         return jsonify({"success": False})
 
-    FEEDBACK_ARRAY.append(is_left_preferred)
-    print("     Feedback Values: " + str(FEEDBACK_ARRAY))
+    feedback_array.append(is_left_preferred)
+    print("     Feedback Values: " + str(feedback_array))
     print("Server: [...] Terminating receive_feedback()")
 
     return jsonify({"success": True})
@@ -117,21 +125,13 @@ def send_feedback():
     """Sends feedback to Query Client"""
 
     print("\n\nServer: Starting send_feedback() [...]")
-    feedback_copy = FEEDBACK_ARRAY[:]
-    FEEDBACK_ARRAY.clear()
+    feedback_copy = feedback_array[:]
+    feedback_array.clear()
 
-    feedback_json = {"FEEDBACK_ARRAY": feedback_copy}
+    feedback_json = {"feedback_array": feedback_copy}
 
     print("Server: [...] Terminating send_feedback()")
     return jsonify(feedback_json)
-
-
-@app.route("/videos/<path:filename>")
-def serve_video(filename):
-    """Make videos accessible for feedback client (web_interface.html)"""
-
-    video_folder = os.path.join(os.getcwd(), app.config["VIDEO_FOLDER"])
-    return flask.send_from_directory(video_folder, filename)
 
 
 @app.route("/stop")
