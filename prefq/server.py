@@ -6,14 +6,13 @@ from urllib.parse import unquote
 import flask
 from flask import Flask, jsonify, request
 
-QUERY_CLIENT_URL = "http://127.0.0.1:5001/"
+# Initialize global variables
 VIDEO_EVALS = 0
+FEEDBACK_ARRAY = []
+VIDEO_FILENAMES = []
 
 app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
-
-feedback_array = [True, False, False, True, True]
-video_filenames = []
 
 
 @app.before_first_request
@@ -42,8 +41,8 @@ def load_web_interface():
     # pylint: disable=global-statement
     global VIDEO_EVALS
 
-    available_videos = len(video_filenames) - VIDEO_EVALS
-    is_video_available = available_videos > 0 and len(video_filenames) != 0
+    available_videos = len(VIDEO_FILENAMES) - VIDEO_EVALS
+    is_video_available = available_videos > 0 and len(VIDEO_FILENAMES) != 0
 
     print("\n\nServer: Starting load_web_interface() [...] ")
     print("Server: Video Evals: " + str(VIDEO_EVALS))
@@ -55,8 +54,8 @@ def load_web_interface():
         print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
-            video_filepath_left=video_filenames[VIDEO_EVALS - 2],
-            video_filepath_right=video_filenames[VIDEO_EVALS - 1],
+            video_filepath_left=VIDEO_FILENAMES[VIDEO_EVALS - 2],
+            video_filepath_right=VIDEO_FILENAMES[VIDEO_EVALS - 1],
         )
 
     print("Server: Rendering Easteregg")
@@ -88,8 +87,8 @@ def receive_videos():
     print("Server: Storing videos locally... ")
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
-    video_filenames.append(left_filename)
-    video_filenames.append(right_filename)
+    VIDEO_FILENAMES.append(left_filename)
+    VIDEO_FILENAMES.append(right_filename)
     print("Server: ...Videos stored locally")
 
     print("Server: [...] Terminating receive_videos()")
@@ -100,19 +99,14 @@ def receive_videos():
 def receive_feedback():
     """Receive and store feedback from feedback client"""
 
-    # should be replaced by flask session object
-    # pylint: disable=global-statement
-
     print("\n\nServer: Starting receive_feedback() [...]")
     data = flask.request.json  # Represents incoming client http request in json format
-    is_left_preferred = data["is_left_preferred"]  # Extract JSON data
-
-    # check for defective msg transfer
-    if is_left_preferred is None:
+    is_left_preferred = data["is_left_preferred"]  # Extract received JSON data
+    if is_left_preferred is None:  # Check for defective msg transfer
         return jsonify({"success": False})
 
-    feedback_array.append(is_left_preferred)
-    print(feedback_array)
+    FEEDBACK_ARRAY.append(is_left_preferred)
+    print("     Feedback Values: " + str(FEEDBACK_ARRAY))
     print("Server: [...] Terminating receive_feedback()")
 
     return jsonify({"success": True})
@@ -123,7 +117,7 @@ def send_feedback():
     """Sends feedback to Query Client"""
 
     print("\n\nServer: Starting send_feedback() [...]")
-    feedback_json = {"feedback_array": feedback_array}
+    feedback_json = {"FEEDBACK_ARRAY": FEEDBACK_ARRAY}
 
     print("Server: [...] Terminating send_feedback()")
     return jsonify(feedback_json)

@@ -2,16 +2,17 @@
 
 import json
 import os
-from pprint import pprint
 
 import requests
 
+# Customizable Parameters
 QUERY_SERVER_URL = "http://127.0.0.1:5000/"
 VIDEO_BUFFERSIZE = 10
 
-root_path = os.path.dirname(os.path.abspath(__file__))
-video_filenames = [f"{str(i).zfill(2)}.mp4" for i in range(1, VIDEO_BUFFERSIZE + 1)]
-feedback_array = []
+# Initial parameters
+ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+FEEDBACK_ARRAY = []
+VIDEO_FILENAMES = [f"{str(i).zfill(2)}.mp4" for i in range(1, VIDEO_BUFFERSIZE + 1)]
 
 
 def send_videos():
@@ -21,13 +22,13 @@ def send_videos():
 
     print("\n\nClient: Starting send_videos() [...]\n")
 
-    for i in range(1, len(video_filenames) // 2 + 1):
+    for i in range(1, len(VIDEO_FILENAMES) // 2 + 1):
         # Prepare POST-Request Content
         left_video_file_path = os.path.join(
-            root_path, "videos/lunarlander_random/", video_filenames[videos_sent]
+            ROOT_PATH, "videos/lunarlander_random/", VIDEO_FILENAMES[videos_sent]
         )
         right_video_file_path = os.path.join(
-            root_path, "videos/lunarlander_random/", video_filenames[videos_sent + 1]
+            ROOT_PATH, "videos/lunarlander_random/", VIDEO_FILENAMES[videos_sent + 1]
         )
 
         with open(left_video_file_path, "rb") as left_video_file, open(
@@ -40,21 +41,21 @@ def send_videos():
         payload = {
             # Send filepaths as .json
             "left_filepath": (
-                json.dumps(video_filenames[videos_sent]),
+                json.dumps(VIDEO_FILENAMES[videos_sent]),
                 "application/json",
             ),
             "right_filepath": (
-                json.dumps(video_filenames[videos_sent + 1]),
+                json.dumps(VIDEO_FILENAMES[videos_sent + 1]),
                 "application/json",
             ),
             # Use the file data directly
             "left_video": (
-                video_filenames[videos_sent],
+                VIDEO_FILENAMES[videos_sent],
                 left_video_data,
                 "application/octet-stream",
             ),
             "right_video": (
-                video_filenames[videos_sent + 1],
+                VIDEO_FILENAMES[videos_sent + 1],
                 right_video_data,
                 "application/octet-stream",
             ),
@@ -81,7 +82,6 @@ def send_videos():
 def request_feedback():
     """GET-Request: Receive client feedback from Server"""
 
-    global feedback_array
     print("\n\nClient: Starting request_feedback() [...]")
 
     response = requests.get(QUERY_SERVER_URL + "feedback", timeout=10)
@@ -90,7 +90,7 @@ def request_feedback():
         print("Client: Receiving feedback data...")
         feedback_data = response.json()
         print("Client: Storing feedback data...")
-        feedback_array = feedback_data["feedback_array"]
+        feedback_array = feedback_data["FEEDBACK_ARRAY"]
         print("Client: ...feedback data stored")
 
         print("Client: Feedback Data:", feedback_array)
