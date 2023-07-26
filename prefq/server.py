@@ -49,21 +49,21 @@ def load_web_interface():
     available_videos = len(filenames_array) - video_evals
     is_video_available = available_videos > 0 and len(filenames_array) != 0
 
-    # print("\n\nServer: Starting load_web_interface() [...] ")
-    # print("Server: Evaluated Videos: " + str(video_evals))
-    # print("Server: Available Videos: " + str(available_videos))
+    print("\n\nServer: Starting load_web_interface() [...] ")
+    print("Server: Evaluated Videos: " + str(video_evals))
+    print("Server: Available Videos: " + str(available_videos))
 
     if is_video_available:
         video_evals += 2
 
-        # print("Server: [...] Terminating load_web_interface()")
+        print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
             video_filename_left=filenames_array[video_evals - 2],
             video_filename_right=filenames_array[video_evals - 1],
         )
 
-    # print("Server: [...] Rendering Easteregg")
+    print("Server: [...] Rendering Easteregg")
     return flask.render_template("easteregg.html")
 
 
