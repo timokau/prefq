@@ -2,9 +2,10 @@
 
 ## Running the server
 
+Running the server only requires a working installation of poetry. Given that, just execute
+
 ```bash
-poetry install
-poetry run python -m prefq.server
+./scripts/run_server.sh
 ```
 
 ## Architecture
