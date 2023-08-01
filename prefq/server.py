@@ -12,8 +12,8 @@ app.config["VIDEO_FOLDER"] = "videos"
 
 # Global counter variable needed for keeping track of evaluated videos
 # In future alternative solution shall be implemented (eg session variable)
-# Pylint does not like globals and thinks every global variabl should be a constant (all uppercase)
-# Therefore we need to ignore invalid-name here
+# Pylint does not like globals and thinks every global variabl should be a constant
+# (all uppercase). Therefore we need to ignore invalid-name here
 # pylint: disable=invalid-name
 video_evals = 0
 feedback_array = []
