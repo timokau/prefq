@@ -1,4 +1,4 @@
-"""An example of a query client that sends queries to the server and polls the results."""
+"""An example of a query client that sends queries to the server and polls results."""
 
 import json
 import os
