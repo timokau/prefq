@@ -63,8 +63,8 @@ def load_web_interface():
             video_filename_right=filenames_array[video_evals - 1],
         )
 
-    print("Server: [...] Rendering Easteregg")
-    return flask.render_template("easteregg.html")
+    print("Server: [...] No data available")
+    return flask.render_template("no_data_availible.html")
 
 
 @app.route("/videos", methods=["POST"])
