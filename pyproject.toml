@@ -17,7 +17,7 @@ flask = "<2.3" # Since we rely on the before_first_request decorator (https://fl
 setuptools = {version = "65.5.0"}
 pip = "21"
 gym = {extras = ["box2d"], version = "^0.21.0", optional = true}
-imitation = {version = "^0.3.2", optional = true}
+imitation = { git = "https://github.com/rk1a/imitation", branch = "ecda-experiment", optional = true}
 # This is a dependency of imitation, but we need to specify it explicitly to
 # avoid version 2.0.1 which has issues with the dependency specification:
 # https://github.com/pytorch/pytorch/issues/100974

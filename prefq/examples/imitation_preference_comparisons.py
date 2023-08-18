@@ -52,11 +52,13 @@ trajectory_generator = preference_comparisons.AgentTrainer(
     rng=rng,
 )
 
+querent = preference_comparisons.PreferenceQuerent()
 pref_comparisons = preference_comparisons.PreferenceComparisons(
     trajectory_generator,
     reward_net,
     num_iterations=5,
     fragmenter=fragmenter,
+    preference_querent=querent,
     preference_gatherer=gatherer,
     reward_trainer=reward_trainer,
     initial_epoch_multiplier=1,
