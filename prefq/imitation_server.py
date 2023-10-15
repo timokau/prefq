@@ -15,6 +15,7 @@ app.config["VIDEO_FOLDER"] = "videos"
 # Pylint does not like globals and thinks every global variabl should be a constant
 # (all uppercase). Therefore we need to ignore invalid-name here
 # pylint: disable=invalid-name
+n_pending_queries = 0
 videos_rendered = 0
 videos_evaluated = 0
 feedback_data = {}
@@ -74,6 +75,14 @@ def receive_videos():
 
     print("\n\nServer: Starting receive_videos() [...]")
 
+    global n_pending_queries
+    
+    if n_pending_queries == 0:
+        data = flask.request.json
+        n_pending_queries = data["n_pending_queries"]
+        print("Server: Pending Queries: " + str(n_pending_queries))
+        return "Server: [...] Terminating receive_videos()"
+
     # unquote() decodes url-encoded characters
     # .filename needs to be called to access json text data
     # strip('"') removes decoded quotation marks
@@ -97,6 +106,7 @@ def receive_videos():
     return "Server: [...] Terminating receive_videos()"
 
 
+
 @app.route("/videos/<path:filename>", methods=["GET"])
 def serve_video(filename):
     """Make videos accessible for feedback client (web_interface.html)"""
@@ -115,9 +125,11 @@ def receive_feedback():
     # pylint: disable=global-statement
     global feedback_data
     global videos_evaluated
+    global n_pending_queries
 
     data = flask.request.json  # Represents incoming client http request in json format
     videos_evaluated += 2  # Incoming request indicates new batch evaluation
+    print(data)
 
     # Extract received JSON data
     is_left_preferred = data["is_left_preferred"]
@@ -132,17 +144,18 @@ def receive_feedback():
     # Save feedback
     new_data = {query_id: is_left_preferred}
     feedback_data.update(new_data)
+    n_pending_queries -= 1
 
     # Remove videos
-    os.remove(os.path.join("videos", f"{query_id}-left.webm"))
-    os.remove(os.path.join("videos", f"{query_id}-right.webm"))
+    os.remove(os.path.join(app.config["VIDEO_FOLDER"], f"{query_id}-left.webm"))
+    os.remove(os.path.join(app.config["VIDEO_FOLDER"], f"{query_id}-right.webm"))
 
     print("\nServer: Feedback stored")
-    print("     Feedback Data:\n")
+    print("     Feedback Data:")
     for qID, boolean in feedback_data.items():
         print(f"    Query ID: {qID}    Left Preferred: {boolean}")
 
-    print("Server: [...] Terminating receive_feedback()")
+    print("\nServer: [...] Terminating receive_feedback()")
 
     return jsonify({"success": True})
 
@@ -151,11 +164,21 @@ def receive_feedback():
 def send_feedback():
     """Sends feedback to Query Client"""
 
+    global n_pending_queries
+
     print("\n\nServer: Starting send_feedback() [...]")
-    print("Server: [...] Terminating send_feedback()")
 
-    return jsonify(feedback_data)
-
+    if n_pending_queries == 0:
+        print("Feddback fully evaluated")
+        print("Server: [...] Terminating send_feedback()")
+        return jsonify(feedback_data)
+    else:
+        print("Feedback not fully evaluated")
+        print("Remaining Queries: " + str(n_pending_queries))
+        print("Server: [...] Terminating send_feedback()")
+        empty_dict = {}
+        return jsonify(empty_dict)
+                
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
