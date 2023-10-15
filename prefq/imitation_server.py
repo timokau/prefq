@@ -19,8 +19,9 @@ app.config["VIDEO_FOLDER"] = "videos"
 # Pylint does not like globals and thinks every global variabl should be a constant
 # (all uppercase). Therefore we need to ignore invalid-name here
 # pylint: disable=invalid-name
-video_evals = 0
-feedback_array = []
+videos_rendered = 0
+videos_evaluated = 0
+feedback_data = {}
 filenames_array = []
 
 
@@ -47,23 +48,23 @@ def load_web_interface():
 
     # should be replaced by flask session object
     # pylint: disable=global-statement
-    global video_evals
+    global videos_rendered
 
-    available_videos = len(filenames_array) - video_evals
+    available_videos = len(filenames_array) - videos_rendered
     is_video_available = available_videos > 0 and len(filenames_array) != 0
 
     print("\n\nServer: Starting load_web_interface() [...] ")
-    print("Server: Evaluated Videos: " + str(video_evals))
+    print("Server: Evaluated Videos: " + str(videos_rendered))
     print("Server: Available Videos: " + str(available_videos))
 
     if is_video_available:
-        video_evals += 2
+        videos_rendered += 2
 
         print("Server: [...] Terminating load_web_interface()")
         return flask.render_template(
             "web_interface.html",
-            video_filename_left=filenames_array[video_evals - 2],
-            video_filename_right=filenames_array[video_evals - 1],
+            video_filename_left=filenames_array[videos_rendered - 2],
+            video_filename_right=filenames_array[videos_rendered - 1],
         )
 
     print("Server: [...] No data available")
@@ -80,8 +81,8 @@ def receive_videos():
     # .filename needs to be called to access json text data
     # strip('"') removes decoded quotation marks
     print("Server: Receiving videos...")
-    left_filename = unquote(request.files.get("left_filepath").filename).strip('"')
-    right_filename = unquote(request.files.get("right_filepath").filename).strip('"')
+    left_filename = unquote(request.files.get("left_filename").filename).strip('"')
+    right_filename = unquote(request.files.get("right_filename").filename).strip('"')
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
     print("    (Left): " + left_filename + "\n   (Right): " + right_filename)
@@ -92,7 +93,6 @@ def receive_videos():
     filenames_array.append(left_filename)
     filenames_array.append(right_filename)
     # Add empty feedback value for newly received, unevaluated data
-    feedback_array.append(None)
 
     print("Server: ...Videos stored locally")
 
@@ -114,23 +114,37 @@ def receive_feedback():
 
     print("\n\nServer: Starting receive_feedback() [...]")
 
-    print("Server: Receiving feedback")
+    # should be replaced by flask session object
+    # pylint: disable=global-statement
+    # pylint: disable=global-variable-not-assigned
+    global feedback_data
+    global videos_evaluated
+
     data = flask.request.json  # Represents incoming client http request in json format
+    videos_evaluated += 2  # Incoming request indicates new batch evaluation
 
     # Extract received JSON data
     is_left_preferred = data["is_left_preferred"]
-    video_filename_left = data["video_filename_left"]
-    video_index_left = int(video_filename_left.split(".")[0]) - 1
-    batch_index = video_index_left // 2
+    left_filename = data["video_filename_left"]
+
+    query_id = left_filename[: -len("-left.webm")]
 
     # Check for defective msg transfer
     if is_left_preferred is None:
         return jsonify({"success": False})
 
-    # Save feedback at corresponding index
-    feedback_array[batch_index] = is_left_preferred
-    print("Server: Feedback stored")
-    print("        Feedback Values: " + str(feedback_array))
+    # Save feedback
+    new_data = {query_id: is_left_preferred}
+    feedback_data.update(new_data)
+
+    # Remove videos
+    os.remove(os.path.join("videos", f"{query_id}-left.webm"))
+    os.remove(os.path.join("videos", f"{query_id}-right.webm"))
+
+    print("\nServer: Feedback stored")
+    print("     Feedback Data:\n")
+    for qID, boolean in feedback_data.items():
+        print(f"    Query ID: {qID}    Left Preferred: {boolean}")
 
     print("Server: [...] Terminating receive_feedback()")
 
@@ -142,14 +156,9 @@ def send_feedback():
     """Sends feedback to Query Client"""
 
     print("\n\nServer: Starting send_feedback() [...]")
-
-    feedback_copy = feedback_array[:]
-    feedback_array.clear()
-    feedback_json = {"feedback_array": feedback_copy}
-
     print("Server: [...] Terminating send_feedback()")
 
-    return jsonify(feedback_json)
+    return jsonify(feedback_data)
 
 
 if __name__ == "__main__":
