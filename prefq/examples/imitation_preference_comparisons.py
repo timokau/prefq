@@ -5,27 +5,161 @@
 # Disable formatting and linters so we can keep the example as close to the original as possible for now.
 # fmt: off
 # pylint: skip-file
+
+import json
+import os
+import pathlib
+import tempfile
+from collections import defaultdict
+from typing import Optional, Sequence, Tuple
+
 import numpy as np
+import requests
 from imitation.algorithms import preference_comparisons
+from imitation.algorithms.preference_comparisons import (
+    SynchronousHumanGatherer,
+    write_fragment_video,
+)
+from imitation.data.types import TrajectoryWithRewPair
+from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
+from imitation.util import logger as imit_logger
+from imitation.util import video_wrapper
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.ppo import MlpPolicy
 
-rng = np.random.default_rng(0)
+# Despite receiving this warning, videos are still rendered correctly. The warning can therefore safely be ignored
+import warnings
+warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
 
-venv = make_vec_env("Pendulum-v1", rng=rng)
+class PrefqGatherer(SynchronousHumanGatherer):
+    """Gatherer for synchronous communication with a flask webserver."""
+
+    def __init__(
+        self,
+        video_dir: pathlib.Path = None,
+        video_width: int = 500,
+        video_height: int = 500,
+        frames_per_second: int = 25,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        rng: Optional[np.random.Generator] = None,
+        server_url: str = None,
+    ) -> None:
+        super().__init__(custom_logger=custom_logger, rng=rng, video_dir=video_dir)
+        self.video_dir = video_dir
+        os.makedirs(video_dir, exist_ok=True)
+        self.video_width = video_width
+        self.video_height = video_height
+        self.frames_per_second = frames_per_second
+        self.server_url = server_url
+
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+        """Iteratively sends video-pairs associated with a Query-ID to server."""
+
+        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+        for i, (query_id, query) in enumerate(self.pending_queries.items()):
+            write_fragment_video(
+                query[0],
+                frames_per_second=self.frames_per_second,
+                output_path=os.path.join(self.video_dir, f"{query_id}-left.webm"),
+            )
+            write_fragment_video(
+                query[1],
+                frames_per_second=self.frames_per_second,
+                output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
+            )
+
+            self._send_videos_to_server(query_id)
+
+        #############################################
+        ### ToDo: Receive preferences from server ###
+
+        # if self._display_videos_and_gather_preference(query_id):
+        #    preferences[i] = 1
+
+        # queries = list(self.pending_queries.values())
+        # self.pending_queries.clear()
+        # return queries, preferences
+
+        #############################################
+
+    def _send_videos_to_server(self, query_id):
+        print("\nPrefqGatherer: sending videos to server...")
+
+        left_filename = f"{query_id}-left.webm"
+        right_filename = f"{query_id}-right.webm"
+
+        left_filepath = os.path.join(self.video_dir, left_filename)
+        right_filepath = os.path.join(self.video_dir, right_filename)
+
+        print("\nLeft Filepath:")
+        print(left_filepath)
+
+        with open(left_filepath, "rb") as left_file, open(
+            right_filepath, "rb"
+        ) as right_file:
+            # Read the file data into memory
+            left_video_data = left_file.read()
+            right_video_data = right_file.read()
+
+        payload = {
+            # Send filenames as .json
+            "left_filename": (
+                json.dumps(left_filename),
+                "application/json",
+            ),
+            "right_filename": (
+                json.dumps(right_filename),
+                "application/json",
+            ),
+            # Use the file data directly
+            "left_video": (
+                left_filename,
+                left_video_data,
+                "application/octet-stream",
+            ),
+            "right_video": (
+                right_filename,
+                right_video_data,
+                "application/octet-stream",
+            ),
+        }
+
+        response = requests.post(self.server_url + "videos", files=payload, timeout=10)
+
+        if response.status_code >= 200 % response.status_code < 400:
+            print("PrefqGatherer: Payload transferred")
+        else:
+            print("PrefqGatherer: Error while sending videos")
+            print(response.status_code)
+
+        print("PrefqGatherer: ...videos sent to server\n")
+
+
+
+SERVER_URL = "http://127.0.0.1:5000/"
+
+rng = np.random.default_rng(0)
+video_dir = tempfile.mkdtemp(prefix="videos_")
+print(os.path.dirname(os.path.abspath(__file__)))
+
+venv = make_vec_env(env_name = "Pendulum-v1", 
+                    rng=rng,
+                    post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env)],
+)
+
+#RenderImageInfoWrapper(env=venv, scale_factor=0.5, use_file_cache=True)
 
 reward_net = BasicRewardNet(
     venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
 )
 
 fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
-gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
 preference_model = preference_comparisons.PreferenceModel(reward_net)
 reward_trainer = preference_comparisons.BasicRewardTrainer(
     preference_model=preference_model,
@@ -42,6 +176,11 @@ agent = PPO(
     ),
     env=venv,
     n_steps=2048 // venv.num_envs,
+    seed=0,
+    batch_size=64,
+    ent_coef=0.0,
+    learning_rate=0.0003,
+    n_epochs=10,
 )
 
 trajectory_generator = preference_comparisons.AgentTrainer(
@@ -52,7 +191,9 @@ trajectory_generator = preference_comparisons.AgentTrainer(
     rng=rng,
 )
 
+gatherer = PrefqGatherer(video_dir = video_dir, server_url=SERVER_URL)
 querent = preference_comparisons.PreferenceQuerent()
+
 pref_comparisons = preference_comparisons.PreferenceComparisons(
     trajectory_generator,
     reward_net,
@@ -61,8 +202,13 @@ pref_comparisons = preference_comparisons.PreferenceComparisons(
     preference_querent=querent,
     preference_gatherer=gatherer,
     reward_trainer=reward_trainer,
+    fragment_length=100,
+    transition_oversampling=1,
+    initial_comparison_frac=0.1,
+    allow_variable_horizon=False,
     initial_epoch_multiplier=1,
 )
+
 pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
 
 reward, _ = evaluate_policy(agent.policy, venv, 10)
