@@ -34,6 +34,8 @@ from stable_baselines3.common.evaluation import evaluate_policy
 import warnings
 warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
 
+SERVER_URL = "http://127.0.0.1:5000/"
+
 # This class is a slightly modified version of the PrefCollectGatherer introduced in https://github.com/HumanCompatibleAI/imitation/pull/716
 class PrefqGatherer(SynchronousHumanGatherer):
     """Gatherer for synchronous communication with a flask webserver."""
@@ -173,19 +175,13 @@ class PrefqGatherer(SynchronousHumanGatherer):
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
         return feedback_data
 
-
-SERVER_URL = "http://127.0.0.1:5000/"
-
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
-print(os.path.dirname(os.path.abspath(__file__)))
 
 venv = make_vec_env(env_name = "Pendulum-v1", 
                     rng=rng,
                     post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env)],
 )
-
-#RenderImageInfoWrapper(env=venv, scale_factor=0.5, use_file_cache=True)
 
 reward_net = BasicRewardNet(
     venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
