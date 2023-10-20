@@ -7,12 +7,10 @@
 # pylint: skip-file
 
 import time
-import uuid
 import json
 import os
 import pathlib
 import tempfile
-from collections import defaultdict
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -26,15 +24,15 @@ from imitation.data.types import TrajectoryWithRewPair
 from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.rewards.reward_nets import BasicRewardNet
-from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.util import logger as imit_logger
-from imitation.util import video_wrapper
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.ppo import MlpPolicy
 
+# Despite receiving this warning, videos are still rendered correctly. The warning can therefore safely be ignored
+import warnings
+warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
 
 class PrefqGatherer(SynchronousHumanGatherer):
     """Gatherer for synchronous communication with a flask webserver."""
