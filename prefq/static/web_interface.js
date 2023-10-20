@@ -72,7 +72,7 @@ function attachEventHandlers() {
   
   on_left_preferred  = document.getElementById('left_preferred');
   on_right_preferred = document.getElementById('right_preferred');
-  video_filename_left = document.getElementById("video_filename_right").textContent;
+  video_filename_left = document.getElementById("video_filename_left").textContent;
 
   on_left_preferred.addEventListener('click', function() {
     is_left_preferred = true;
