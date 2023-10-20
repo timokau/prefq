@@ -27,17 +27,17 @@ from imitation.data.types import TrajectoryWithRewPair
 from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.rewards.reward_nets import BasicRewardNet
-from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.util import logger as imit_logger
-from imitation.util import video_wrapper
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.ppo import MlpPolicy
 
 warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
 
+SERVER_URL = "http://127.0.0.1:5000/"
+
+# This class is a slightly modified version of the PrefCollectGatherer introduced in https://github.com/HumanCompatibleAI/imitation/pull/716
 class PrefqGatherer(SynchronousHumanGatherer):
     """Gatherer for synchronous communication with a flask webserver."""
 
@@ -77,17 +77,19 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
             self._send_videos_to_server(query_id)
 
-        #############################################
-        ### ToDo: Receive preferences from server ###
+        
+        feedback_data = self._get_feedback_from_server()
 
-        # if self._display_videos_and_gather_preference(query_id):
-        #    preferences[i] = 1
+        for query_id, is_left_preferred in feedback_data.items():
+            print(f"    Query ID: {query_id}    Left Video Preferred: {is_left_preferred}")
+            preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+            preferences[i] = 1 if is_left_preferred else 0
 
-        # queries = list(self.pending_queries.values())
-        # self.pending_queries.clear()
-        # return queries, preferences
+        queries = list(self.pending_queries.values())
+        self.pending_queries.clear()
 
-        #############################################
+        return queries, preferences
+
 
     def _send_videos_to_server(self, query_id):
         print("\nPrefqGatherer: sending videos to server...")
@@ -142,19 +144,41 @@ class PrefqGatherer(SynchronousHumanGatherer):
         print("PrefqGatherer: ...videos sent to server\n")
 
 
+    def _get_feedback_from_server(self):
+        """
+        GET-Request: Receive client feedback from Server
+        
+            After rendering all videos, the PrefQGatherer enters
+            a blocking while loop, until the server has received
+            all feedback data from the Feedback Client.
+        """
 
-SERVER_URL = "http://127.0.0.1:5000/"
+        print("\n\PrefqGatherer: Starting request_feedback() [...]")
+        
+        def _wait_for_feedback_request(url):
+            while True:
+                time.sleep(5)
+                response = requests.get(url)
+                if response.status_code == 200:
+                    feedback_data = response.json()
+                    if feedback_data == {}:
+                        print("Query Client: Waiting for feedback...")
+                        continue
+                    else: 
+                        print("Query Client: Feedback received")
+                        break
+            return feedback_data
+
+        feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
+        return feedback_data
 
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
-print(os.path.dirname(os.path.abspath(__file__)))
 
 venv = make_vec_env(env_name = "Pendulum-v1", 
                     rng=rng,
                     post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env)],
 )
-
-#RenderImageInfoWrapper(env=venv, scale_factor=0.5, use_file_cache=True)
 
 reward_net = BasicRewardNet(
     venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
