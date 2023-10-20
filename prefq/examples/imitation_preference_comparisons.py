@@ -34,6 +34,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 import warnings
 warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
 
+# This class is a slightly modified version of the PrefCollectGatherer introduced in https://github.com/HumanCompatibleAI/imitation/pull/716
 class PrefqGatherer(SynchronousHumanGatherer):
     """Gatherer for synchronous communication with a flask webserver."""
 
