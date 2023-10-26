@@ -21,16 +21,18 @@ def send_videos():
 
     n_pending_queries = AVAILABLE_VIDEOS // 2
 
-    response = requests.post(
-        QUERY_SERVER_URL + "videos",
-        json={"n_pending_queries": n_pending_queries},
-        timeout=10,
-    )
-    if response.status_code >= 200 & response.status_code < 400:
-        print("Client: Expected number of queries communicated to server\n")
-    else:
-        print("Client: Error: send_videos()    Status code:\n")
-        print(response.status_code)
+    try:
+        response = requests.post(
+            QUERY_SERVER_URL + "videos",
+            json={"n_pending_queries": n_pending_queries},
+            timeout=10,
+        )
+
+        response.raise_for_status()
+        print("Query Client: Expected number of queries communicated to server\n")
+    except requests.exceptions.RequestException as exception:
+        print("Query Client: Error: send_videos()")
+        print(f"    Exception: {exception}\n")
 
     for i in range(1, AVAILABLE_VIDEOS // 2 + 1):
         # Prepare POST-Request Content
@@ -80,15 +82,17 @@ def send_videos():
 
         videos_sent += 2
 
-        print("Client: " + f"{i:02}" + " Sending data to Server")
-        response = requests.post(QUERY_SERVER_URL + "videos", files=payload, timeout=10)
+        print("Query Client: " + f"{i:02}" + " Sending data to Server")
+        try:
+            response = requests.post(
+                QUERY_SERVER_URL + "videos", files=payload, timeout=10
+            )
+            if 200 <= response.status_code < 400:
+                print(f"Query Client: {i:02} Payload transferred")
 
-        if response.status_code >= 200 & response.status_code < 400:
-            print("Client: " + f"{i:02}" + " Payload transferred")
-        else:
-            print("Client: Error: send_videos()    Status code:")
-            print(response.status_code)
-        print("")
+        except requests.exceptions.RequestException as exception:
+            print("Query Client: Error: send_videos()")
+            print(f"    Exception: {exception}\n")
 
     print("Client: [...] Terminating send_videos()")
 
@@ -101,13 +105,20 @@ def wait_for_feedback(url):
 
     while True:
         time.sleep(5)
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
             feedback_data = response.json()
             if feedback_data == {}:
                 print("Query Client: Waiting for feedback...")
                 continue
             print("Query Client: Feedback received")
+            break
+
+        except requests.exceptions.RequestException as exception:
+            print("Query Client: Error: send_videos()")
+            print(f"    Exception: {exception}\n")
+            feedback_data = exception
             break
     return feedback_data
 
@@ -115,13 +126,11 @@ def wait_for_feedback(url):
 def request_feedback():
     """GET-Request: Receive client feedback from Server"""
 
-    print("\n\nClient: Starting request_feedback() [...]")
+    print("\n\nQuery Client: Starting request_feedback() [...]")
 
     feedback_data = wait_for_feedback(QUERY_SERVER_URL + "feedback")
-    print("Client: Feedback data received")
-    print(feedback_data)
-
-    return "Client: Reqeuest in request_feedback() failed"
+    print("Query Client: Feedback data received")
+    print(str(feedback_data) + "\n")
 
 
 def main():
