@@ -18,7 +18,6 @@ def send_videos():
     print("\n\nClient: Starting send_videos() [...]\n")
 
     videos_sent = 0
-
     n_pending_queries = AVAILABLE_VIDEOS // 2
 
     try:
@@ -34,7 +33,7 @@ def send_videos():
         print("Query Client: Error: send_videos()")
         print(f"    Exception: {exception}\n")
 
-    for i in range(1, AVAILABLE_VIDEOS // 2 + 1):
+    for i in range(1, n_pending_queries + 1):
         # Prepare POST-Request Content
         left_video_file_path = os.path.join(
             ROOT_PATH, "videos/lunarlander_random/", VIDEO_FILENAMES[videos_sent]
@@ -50,10 +49,12 @@ def send_videos():
             left_video_data = left_video_file.read()
             right_video_data = right_video_file.read()
 
-        # remove .mp4
+        # Remove file extensions
         video_filename_left = VIDEO_FILENAMES[videos_sent].split(".")[0]
         video_filename_right = VIDEO_FILENAMES[videos_sent + 1].split(".")[0]
+        # Define unique Query ID
         query_id = video_filename_left + "-" + video_filename_right
+        # Define unique video filenames for each query
         video_filename_left = query_id + "-left.webm"
         video_filename_right = query_id + "-right.webm"
 
@@ -135,6 +136,7 @@ def request_feedback():
 
 def main():
     """Send the example queries and poll for feedback."""
+
     send_videos()
     request_feedback()
 
