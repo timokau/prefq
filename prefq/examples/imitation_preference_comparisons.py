@@ -91,6 +91,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         queries = list(self.pending_queries.values())
         self.pending_queries.clear()
+        
 
         return queries, preferences
 
@@ -162,7 +163,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
         def _wait_for_feedback_request(url):
             while True:
                 time.sleep(5)
-                response = requests.get(url)
+                response = requests.get(url, timeout=5)
                 if response.status_code == 200:
                     feedback_data = response.json()
                     if feedback_data == {}:
