@@ -171,7 +171,7 @@ video_dir = tempfile.mkdtemp(prefix="videos_")
 
 venv = make_vec_env(env_name = "Pendulum-v1", 
                     rng=rng,
-                    post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env)],
+                    post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)],
 )
 
 reward_net = BasicRewardNet(
