@@ -91,11 +91,12 @@ def receive_videos():
     # .filename needs to be called to access json text data
     # strip('"') removes decoded quotation marks
     print("Server: Receiving videos...")
-    left_filename = unquote(request.files.get("left_filename").filename).strip('"')
-    right_filename = unquote(request.files.get("right_filename").filename).strip('"')
+    query_id = unquote(request.files.get("query_id").filename).strip('"')
+    left_filename = query_id + "-left.webm"
+    right_filename = query_id + "-right.webm"
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
-    print("    (Left): " + left_filename + "\n   (Right): " + right_filename)
+    print(f"    Query ID: {query_id}")
     print("Server: ...Videos received")
 
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
@@ -135,6 +136,7 @@ def receive_feedback():
     # Extract received JSON data
     is_left_preferred = data["is_left_preferred"]
     left_filename = data["video_filename_left"]
+    right_filename = data["video_filename_right"]
 
     query_id = left_filename[: -len("-left.webm")]
 
@@ -148,8 +150,8 @@ def receive_feedback():
     n_pending_queries -= 1
 
     # Remove videos
-    os.remove(os.path.join(app.config["VIDEO_FOLDER"], f"{query_id}-left.webm"))
-    os.remove(os.path.join(app.config["VIDEO_FOLDER"], f"{query_id}-right.webm"))
+    os.remove(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
+    os.remove(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
 
     print("\nServer: Feedback stored")
     print("     Feedback Data:")

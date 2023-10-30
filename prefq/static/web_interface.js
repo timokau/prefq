@@ -5,7 +5,8 @@ var on_right_preferred      = document.getElementById('right_preferred')
 var left_video              = document.getElementById('left_video')
 var right_video             = document.getElementById('right_video')
 // Get filename
-var video_filename_left       = document.getElementById("video_filename_right").textContent;
+var video_filename_left       = document.getElementById("video_filename_left").textContent;
+var video_filename_right      = document.getElementById("video_filename_right").textContent;
 
 let is_left_preferred  = null
 
@@ -35,6 +36,7 @@ function send_data() {
   const data = {                                 // Prepare user data
     is_left_preferred: is_left_preferred,
     video_filename_left: video_filename_left,
+    video_filename_right: video_filename_right,
     };
   const jsonData = JSON.stringify(data)          // Convert user data 
   xhr.send(jsonData)                             // Send user data to Server
@@ -73,6 +75,7 @@ function attachEventHandlers() {
   on_left_preferred  = document.getElementById('left_preferred');
   on_right_preferred = document.getElementById('right_preferred');
   video_filename_left = document.getElementById("video_filename_left").textContent;
+  video_filename_right = document.getElementById("video_filename_right").textContent;
 
   on_left_preferred.addEventListener('click', function() {
     is_left_preferred = true;

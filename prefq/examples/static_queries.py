@@ -54,21 +54,8 @@ def send_videos():
         video_filename_right = VIDEO_FILENAMES[videos_sent + 1].split(".")[0]
         # Define unique Query ID
         query_id = video_filename_left + "-" + video_filename_right
-        # Define unique video filenames for each query
-        video_filename_left = query_id + "-left.webm"
-        video_filename_right = query_id + "-right.webm"
 
         payload = {
-            # Send filepaths as .json
-            "left_filename": (
-                json.dumps(video_filename_left),
-                "application/json",
-            ),
-            "right_filename": (
-                json.dumps(video_filename_right),
-                "application/json",
-            ),
-            # Use the file data directly
             "left_video": (
                 VIDEO_FILENAMES[videos_sent],
                 left_video_data,
@@ -78,6 +65,10 @@ def send_videos():
                 VIDEO_FILENAMES[videos_sent + 1],
                 right_video_data,
                 "application/octet-stream",
+            ),
+            "query_id": (
+                json.dumps(query_id),
+                "application/json",
             ),
         }
 

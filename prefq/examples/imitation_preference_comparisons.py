@@ -62,7 +62,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
     def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
-
         n_pending_queries = len(self.pending_queries)
         preferences = np.zeros(n_pending_queries, dtype=np.float32)
         requests.post(self.server_url + "videos", json={"n_pending_queries": n_pending_queries})
@@ -91,7 +90,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         queries = list(self.pending_queries.values())
         self.pending_queries.clear()
-        
 
         return queries, preferences
 
@@ -105,9 +103,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
         left_filepath = os.path.join(self.video_dir, left_filename)
         right_filepath = os.path.join(self.video_dir, right_filename)
 
-        print("\nLeft Filepath:")
-        print(left_filepath)
-
         with open(left_filepath, "rb") as left_file, open(
             right_filepath, "rb"
         ) as right_file:
@@ -116,16 +111,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
             right_video_data = right_file.read()
 
         payload = {
-            # Send filenames as .json
-            "left_filename": (
-                json.dumps(left_filename),
-                "application/json",
-            ),
-            "right_filename": (
-                json.dumps(right_filename),
-                "application/json",
-            ),  
-            # Use the file data directly
             "left_video": (
                 left_filename,
                 left_video_data,
@@ -135,6 +120,10 @@ class PrefqGatherer(SynchronousHumanGatherer):
                 right_filename,
                 right_video_data,
                 "application/octet-stream",
+            ),
+            "query_id": (
+                json.dumps(query_id),
+                "application/json",
             ),
         }
 
