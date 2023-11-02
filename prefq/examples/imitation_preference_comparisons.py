@@ -11,9 +11,6 @@ import os
 import pathlib
 import tempfile
 import time
-
-# Despite receiving this warning, videos are still rendered correctly. The warning can therefore safely be ignored
-import warnings
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -36,8 +33,6 @@ from prefq.examples.updated_imitation_modules import (
     RenderImageInfoWrapper,
     make_vec_env,
 )
-
-warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
