@@ -12,8 +12,8 @@ license = "MIT"
 python = "^3.9"
 moviepy = "^1.0.3"
 flask = "<2.3" # Since we rely on the before_first_request decorator (https://flask.palletsprojects.com/en/2.2.x/api/?highlight=before_first_request#flask.Flask.before_first_request)
-gymnasium = {extras = ["box2d"], version = "^0.28.1", optional = true}
-imitation = { git = "https://github.com/rk1a/imitation", branch = "human-prefs",  optional = true}
+gymnasium = {extras = ["box2d"], version = "^0.29.1", optional = true}
+imitation = { git = "https://github.com/rk1a/imitation", branch = "human-prefs", optional = true}
 # This is a dependency of imitation, but we need to specify it explicitly to
 # avoid version 2.0.1 and 2.1.0 which have issues with the dependency specification:
 # https://stackoverflow.com/questions/76327419/valueerror-libcublas-so-0-9-not-found-in-the-system-path

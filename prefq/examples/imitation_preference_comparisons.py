@@ -29,10 +29,7 @@ from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 
-from prefq.examples.updated_imitation_modules import (
-    RenderImageInfoWrapper,
-    make_vec_env,
-)
+from prefq.examples.updated_imitation_modules import RenderImageInfoWrapper
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
@@ -58,7 +55,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
         self.frames_per_second = frames_per_second
         self.server_url = server_url
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
         n_pending_queries = len(self.pending_queries)
@@ -169,10 +166,10 @@ class PrefqGatherer(SynchronousHumanGatherer):
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
 
-venv = make_vec_env(env_name = "Pendulum-v1", 
-                    render_mode="rgb_array",
+venv = make_vec_env(env_name = "Pendulum-v1",
                     rng=rng,
                     post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)],
+                    env_make_kwargs={"render_mode": "rgb_array"},
 )
 
 reward_net = BasicRewardNet(
@@ -215,7 +212,6 @@ pref_comparisons = preference_comparisons.PreferenceComparisons(
     reward_net,
     num_iterations=5,
     fragmenter=fragmenter,
-    preference_querent=querent,
     preference_gatherer=gatherer,
     reward_trainer=reward_trainer,
     initial_epoch_multiplier=1,
