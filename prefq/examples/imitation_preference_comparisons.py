@@ -11,9 +11,6 @@ import os
 import pathlib
 import tempfile
 import time
-
-# Despite receiving this warning, videos are still rendered correctly. The warning can therefore safely be ignored
-import warnings
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -24,7 +21,6 @@ from imitation.algorithms.preference_comparisons import (
     write_fragment_video,
 )
 from imitation.data.types import TrajectoryWithRewPair
-from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.util import logger as imit_logger
@@ -33,7 +29,7 @@ from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 
-warnings.filterwarnings("ignore", message="OpenCV: FFMPEG: tag 0x30395056/'VP90' is not supported with codec id 167 and format 'webm / WebM'")
+from prefq.examples.updated_imitation_modules import RenderImageInfoWrapper
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
@@ -59,7 +55,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
         self.frames_per_second = frames_per_second
         self.server_url = server_url
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
         n_pending_queries = len(self.pending_queries)
@@ -166,12 +162,14 @@ class PrefqGatherer(SynchronousHumanGatherer):
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
         return feedback_data
 
+
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
 
-venv = make_vec_env(env_name = "Pendulum-v1", 
+venv = make_vec_env(env_name = "Pendulum-v1",
                     rng=rng,
                     post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)],
+                    env_make_kwargs={"render_mode": "rgb_array"},
 )
 
 reward_net = BasicRewardNet(
@@ -214,7 +212,6 @@ pref_comparisons = preference_comparisons.PreferenceComparisons(
     reward_net,
     num_iterations=5,
     fragmenter=fragmenter,
-    preference_querent=querent,
     preference_gatherer=gatherer,
     reward_trainer=reward_trainer,
     initial_epoch_multiplier=1,
