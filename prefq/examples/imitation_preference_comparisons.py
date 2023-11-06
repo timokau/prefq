@@ -145,11 +145,12 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         response = requests.post(self.server_url + "videos", files=payload, timeout=10)
 
-        if response.status_code >= 200 % response.status_code < 400:
+        try:
+            response.raise_for_status()
             print("PrefqGatherer: Payload transferred")
-        else:
-            print("PrefqGatherer: Error while sending videos")
-            print(response.status_code)
+        except requests.exceptions.HTTPError as err:
+            print(f"PrefqGatherer: Error while sending videos: {err}")
+            raise requests.exceptions.HTTPError
 
         print("PrefqGatherer: ...videos sent to server\n")
 
@@ -167,16 +168,23 @@ class PrefqGatherer(SynchronousHumanGatherer):
         
         def _wait_for_feedback_request(url):
             while True:
-                time.sleep(5)
-                response = requests.get(url, timeout=5)
-                if response.status_code == 200:
-                    feedback_data = response.json()
-                    if feedback_data == {}:
-                        print("Query Client: Waiting for feedback...")
-                        continue
-                    else: 
-                        print("Query Client: Feedback received")
-                        break
+                try:
+                    time.sleep(5)
+                    response = requests.get(url, timeout=5)
+                    if response.status_code == 200:
+                        feedback_data = response.json()
+                        if feedback_data == {}:
+                            print("Query Client: Waiting for feedback...")
+                            continue
+                        else: 
+                            print("Query Client: Feedback received")
+                            break
+                except requests.exceptions.Timeout:
+                    print("Query Client: Timeout error occurred while waiting for feedback.")
+                    raise requests.exceptions.Timeout
+                except requests.exceptions.RequestException as e:
+                    print(f"Query Client: An error occurred while waiting for feedback: {e}")
+                    raise requests.exceptions.RequestException
             return feedback_data
 
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
