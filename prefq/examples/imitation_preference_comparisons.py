@@ -209,7 +209,7 @@ preference_model = preference_comparisons.PreferenceModel(reward_net)
 reward_trainer = preference_comparisons.BasicRewardTrainer(
     preference_model=preference_model,
     loss=preference_comparisons.CrossEntropyRewardLoss(),
-    epochs=3,
+    epochs=10,
     rng=rng,
 )
 
@@ -221,6 +221,12 @@ agent = PPO(
     ),
     env=venv,
     n_steps=2048 // venv.num_envs,
+    clip_range=0.1,
+    ent_coef=0.01,
+    gae_lambda=0.95,
+    n_epochs=10,
+    gamma=0.97,
+    learning_rate=2e-3,
     seed=0,
 )
 
@@ -228,7 +234,7 @@ trajectory_generator = preference_comparisons.AgentTrainer(
     algorithm=agent,
     reward_fn=reward_net,
     venv=venv,
-    exploration_frac=0.0,
+    exploration_frac=0.05,
     rng=rng,
 )
 
@@ -238,7 +244,7 @@ querent = preference_comparisons.PreferenceQuerent()
 pref_comparisons = preference_comparisons.PreferenceComparisons(
     trajectory_generator,
     reward_net,
-    num_iterations=5,
+    num_iterations=60,
     fragmenter=fragmenter,
     preference_gatherer=gatherer,
     reward_trainer=reward_trainer,
