@@ -60,6 +60,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         n_pending_queries = len(self.pending_queries)
         preferences = np.zeros(n_pending_queries, dtype=np.float32)
+        query_dict = {}
         requests.post(self.server_url + "videos", json={"n_pending_queries": n_pending_queries})
 
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
@@ -74,15 +75,34 @@ class PrefqGatherer(SynchronousHumanGatherer):
                 output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
             )
 
+            empty_query_response = {query_id: None}
+            query_dict.update(empty_query_response)
             self._send_videos_to_server(query_id)
 
         
         feedback_data = self._get_feedback_from_server()
 
+        print("\n\nUnordered Query Response")
         for query_id, is_left_preferred in feedback_data.items():
             print(f"    Query ID: {query_id}    Left Video Preferred: {is_left_preferred}")
-            preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+
+            # Order of queries and preferences must match, but the server response is unordered
+            # due to:
+            #   (1) The asynchronous nature feedback collection (multiple users can send feedback)
+            #   (2) The nature of the flask.jsonify() function, that orders keys alphanumerically.
+            #       This behavior can be turned off, but makes no sense due to (1)
+            query_dict[query_id] = is_left_preferred
+
+        print("\n\nOrdered Query Response")
+        for query_id, is_left_preferred in query_dict.items():
+            print(f"    Query ID: {query_id}    Left Video Preferred: {is_left_preferred}")
+
+        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+        for i, (query_id, is_left_preferred) in enumerate(query_dict.items()):
+            # read in ordered preferences
             preferences[i] = 1 if is_left_preferred else 0
+
+        print(f"\n\nPreferences:\n{np.vstack(preferences)}")
 
         queries = list(self.pending_queries.values())
         self.pending_queries.clear()
