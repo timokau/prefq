@@ -2,6 +2,8 @@
 # It only serves to show that the `imitation` dependency is working.
 # [1] https://github.com/HumanCompatibleAI/imitation/blob/19c7f35d7cac97e623f352d367fa384f5f3bb465/docs/algorithms/preference_comparisons.rst
 
+# Hyperparameters used in this file have been taken from https://github.com/HumanCompatibleAI/imitation/pull/771
+
 # Disable formatting and linters so we can keep the example as close to the original as possible for now.
 # fmt: off
 # pylint: skip-file
@@ -59,8 +61,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
         n_pending_queries = len(self.pending_queries)
-        preferences = np.zeros(n_pending_queries, dtype=np.float32)
-        query_dict = {}
         requests.post(self.server_url + "videos", json={"n_pending_queries": n_pending_queries})
 
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
@@ -75,32 +75,21 @@ class PrefqGatherer(SynchronousHumanGatherer):
                 output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
             )
 
-            empty_query_response = {query_id: None}
-            query_dict.update(empty_query_response)
+
             self._send_videos_to_server(query_id)
 
-        
+
         feedback_data = self._get_feedback_from_server()
 
-        print("\n\nUnordered Query Response")
-        for query_id, is_left_preferred in feedback_data.items():
-            print(f"    Query ID: {query_id}    Left Video Preferred: {is_left_preferred}")
-
+        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+        for i, query_id in enumerate(self.pending_queries.keys()):
             # Order of queries and preferences must match, but the server response is unordered
             # due to:
             #   (1) The asynchronous nature feedback collection (multiple users can send feedback)
             #   (2) The nature of the flask.jsonify() function, that orders keys alphanumerically.
             #       This behavior can be turned off, but makes no sense due to (1)
-            query_dict[query_id] = is_left_preferred
-
-        print("\n\nOrdered Query Response")
-        for query_id, is_left_preferred in query_dict.items():
-            print(f"    Query ID: {query_id}    Left Video Preferred: {is_left_preferred}")
-
-        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
-        for i, (query_id, is_left_preferred) in enumerate(query_dict.items()):
-            # read in ordered preferences
-            preferences[i] = 1 if is_left_preferred else 0
+            is_left_preferred = 1 if feedback_data[query_id] else 0
+            preferences[i] = is_left_preferred
 
         print(f"\n\nPreferences:\n{np.vstack(preferences)}")
 
@@ -148,9 +137,9 @@ class PrefqGatherer(SynchronousHumanGatherer):
         try:
             response.raise_for_status()
             print("PrefqGatherer: Payload transferred")
-        except requests.exceptions.HTTPError as err:
-            print(f"PrefqGatherer: Error while sending videos: {err}")
-            raise requests.exceptions.HTTPError
+        except requests.exceptions.HTTPError as http_error:
+            print(f"PrefqGatherer: Error while sending videos: {http_error}")
+            raise http_error
 
         print("PrefqGatherer: ...videos sent to server\n")
 
@@ -164,7 +153,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
             all feedback data from the Feedback Client.
         """
 
-        print("\n\PrefqGatherer: Starting request_feedback() [...]")
+        print("\nPrefqGatherer: Starting request_feedback() [...]")
         
         def _wait_for_feedback_request(url):
             while True:
@@ -179,12 +168,12 @@ class PrefqGatherer(SynchronousHumanGatherer):
                         else: 
                             print("Query Client: Feedback received")
                             break
-                except requests.exceptions.Timeout:
+                except requests.exceptions.Timeout as timeout:
                     print("Query Client: Timeout error occurred while waiting for feedback.")
-                    raise requests.exceptions.Timeout
-                except requests.exceptions.RequestException as e:
+                    raise timeout
+                except requests.exceptions.RequestException as request_exception:
                     print(f"Query Client: An error occurred while waiting for feedback: {e}")
-                    raise requests.exceptions.RequestException
+                    raise request_exception
             return feedback_data
 
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
