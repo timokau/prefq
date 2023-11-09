@@ -195,12 +195,10 @@ class EnvClosingContext():
     def __enter__(self):
         pass
 
-    def __exit__(self, type , value, traceback):
+    def __exit__(self, type, value, traceback):
         self.env.close()
 
 with EnvClosingContext(venv):
-    
-
     reward_net = BasicRewardNet(
         venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
     )
