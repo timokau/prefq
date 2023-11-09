@@ -34,15 +34,11 @@
 </head>
 
 <body>
-    <h1 id="dynamic-text">No data available - please come back later</h1>
-    <button class="button" onclick="reloadPage()">Reload Website</button>
-
-    <script>
-
-        function reloadPage() {
-            window.location.reload();
-        }
-
-    </script>
-</body>
-</html>
+    <h1 id="dynamic-text">No data available - waiting for new data</h1>
+        <script>
+            setInterval(function() {
+                window.location.reload();
+            }, 3000);
+        </script>
+    </body>
+    </html>
