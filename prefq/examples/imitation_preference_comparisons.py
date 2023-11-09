@@ -189,8 +189,7 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
         return feedback_data
-
-
+    
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
 
@@ -200,58 +199,71 @@ venv = make_vec_env(env_name = "Pendulum-v1",
                     env_make_kwargs={"render_mode": "rgb_array"},
 )
 
-reward_net = BasicRewardNet(
-    venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
-)
+class EnvClosingContext():
+    def __init__(self, env):
+        self.env = env
 
-fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
-preference_model = preference_comparisons.PreferenceModel(reward_net)
-reward_trainer = preference_comparisons.BasicRewardTrainer(
-    preference_model=preference_model,
-    loss=preference_comparisons.CrossEntropyRewardLoss(),
-    epochs=10,
-    rng=rng,
-)
+    def __enter__(self):
+        pass
 
-agent = PPO(
-    policy=FeedForward32Policy,
-    policy_kwargs=dict(
-        features_extractor_class=NormalizeFeaturesExtractor,
-        features_extractor_kwargs=dict(normalize_class=RunningNorm),
-    ),
-    env=venv,
-    n_steps=2048 // venv.num_envs,
-    clip_range=0.1,
-    ent_coef=0.01,
-    gae_lambda=0.95,
-    n_epochs=10,
-    gamma=0.97,
-    learning_rate=2e-3,
-    seed=0,
-)
+    def __exit__(self, type , value, traceback):
+        self.env.close()
 
-trajectory_generator = preference_comparisons.AgentTrainer(
-    algorithm=agent,
-    reward_fn=reward_net,
-    venv=venv,
-    exploration_frac=0.05,
-    rng=rng,
-)
+with EnvClosingContext(venv):
+    
 
-gatherer = PrefqGatherer(video_dir = video_dir, server_url=SERVER_URL)
-querent = preference_comparisons.PreferenceQuerent()
+    reward_net = BasicRewardNet(
+        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
+    )
 
-pref_comparisons = preference_comparisons.PreferenceComparisons(
-    trajectory_generator,
-    reward_net,
-    num_iterations=60,
-    fragmenter=fragmenter,
-    preference_gatherer=gatherer,
-    reward_trainer=reward_trainer,
-    initial_epoch_multiplier=1,
-)
+    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
+    preference_model = preference_comparisons.PreferenceModel(reward_net)
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        preference_model=preference_model,
+        loss=preference_comparisons.CrossEntropyRewardLoss(),
+        epochs=10,
+        rng=rng,
+    )
 
-pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+    agent = PPO(
+        policy=FeedForward32Policy,
+        policy_kwargs=dict(
+            features_extractor_class=NormalizeFeaturesExtractor,
+            features_extractor_kwargs=dict(normalize_class=RunningNorm),
+        ),
+        env=venv,
+        n_steps=2048 // venv.num_envs,
+        clip_range=0.1,
+        ent_coef=0.01,
+        gae_lambda=0.95,
+        n_epochs=10,
+        gamma=0.97,
+        learning_rate=2e-3,
+        seed=0,
+    )
 
-reward, _ = evaluate_policy(agent.policy, venv, 10)
-print("Reward:", reward)
+    trajectory_generator = preference_comparisons.AgentTrainer(
+        algorithm=agent,
+        reward_fn=reward_net,
+        venv=venv,
+        exploration_frac=0.05,
+        rng=rng,
+    )
+
+    gatherer = PrefqGatherer(video_dir = video_dir, server_url=SERVER_URL)
+    querent = preference_comparisons.PreferenceQuerent()
+
+    pref_comparisons = preference_comparisons.PreferenceComparisons(
+        trajectory_generator,
+        reward_net,
+        num_iterations=60,
+        fragmenter=fragmenter,
+        preference_gatherer=gatherer,
+        reward_trainer=reward_trainer,
+        initial_epoch_multiplier=1,
+    )
+
+    pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+
+    reward, _ = evaluate_policy(agent.policy, venv, 10)
+    print("Reward:", reward)
