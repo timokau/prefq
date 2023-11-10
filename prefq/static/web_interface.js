@@ -70,34 +70,41 @@ function request_videos() {
 }
 
 
-function attachEventHandlers() {
-    
-  // update variables
-  on_left_preferred  = document.getElementById('left_preferred');
-  on_right_preferred = document.getElementById('right_preferred');
-  video_filename_left = document.getElementById("video_filename_left").textContent;
-  video_filename_right = document.getElementById("video_filename_right").textContent;
-  is_left_preferred = null;
+const beforeUnloadHandler = (event) => {
+    event.preventDefault();
 
-  on_left_preferred.addEventListener('click', function() {
-      is_left_preferred = true;
-      send_data();
-      request_videos();
-  });
-
-  on_right_preferred.addEventListener('click', function() {
-      is_left_preferred = false;
-      send_data();
-      request_videos();
-  });
-}
-
-// Attach Signal Handler
-attachEventHandlers();
-
-// Send null value to server when user leaves page without selecting preference
-window.onbeforeunload = function() {
     if (is_left_preferred === null) {
         send_data();
     }
-};
+
+    event.returnValue = true;
+}
+
+function attachEventHandlers() {
+
+    // update variables
+    on_left_preferred  = document.getElementById('left_preferred');
+    on_right_preferred = document.getElementById('right_preferred');
+    video_filename_left = document.getElementById("video_filename_left").textContent;
+    video_filename_right = document.getElementById("video_filename_right").textContent;
+
+    on_left_preferred.addEventListener('click', function() {
+        is_left_preferred = true;
+        send_data();
+        request_videos();
+    });
+
+    on_right_preferred.addEventListener('click', function() {
+        is_left_preferred = false;
+        send_data();
+        request_videos();
+    });
+
+    is_left_preferred = null;
+
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+}
+
+
+// Attach Signal Handler
+attachEventHandlers();
