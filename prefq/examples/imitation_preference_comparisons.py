@@ -60,9 +60,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
-        n_pending_queries = len(self.pending_queries)
-        requests.post(self.server_url + "videos", json={"n_pending_queries": n_pending_queries})
-
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
             write_fragment_video(
                 query[0],

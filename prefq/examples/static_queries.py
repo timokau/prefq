@@ -18,22 +18,8 @@ def send_videos():
     print("\n\nClient: Starting send_videos() [...]\n")
 
     videos_sent = 0
-    n_pending_queries = AVAILABLE_VIDEOS // 2
 
-    try:
-        response = requests.post(
-            QUERY_SERVER_URL + "videos",
-            json={"n_pending_queries": n_pending_queries},
-            timeout=10,
-        )
-
-        response.raise_for_status()
-        print("Query Client: Expected number of queries communicated to server\n")
-    except requests.exceptions.RequestException as exception:
-        print("Query Client: Error: send_videos()")
-        print(f"    Exception: {exception}\n")
-
-    for i in range(1, n_pending_queries + 1):
+    for i in range(1, (AVAILABLE_VIDEOS // 2) + 1):
         # Prepare POST-Request Content
         left_video_file_path = os.path.join(
             ROOT_PATH, "videos/lunarlander_random/", VIDEO_FILENAMES[videos_sent]
