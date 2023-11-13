@@ -2,6 +2,8 @@
 # It only serves to show that the `imitation` dependency is working.
 # [1] https://github.com/HumanCompatibleAI/imitation/blob/19c7f35d7cac97e623f352d367fa384f5f3bb465/docs/algorithms/preference_comparisons.rst
 
+# Hyperparameters used in this file have been taken from https://github.com/HumanCompatibleAI/imitation/pull/771
+
 # Disable formatting and linters so we can keep the example as close to the original as possible for now.
 # fmt: off
 # pylint: skip-file
@@ -59,7 +61,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
         n_pending_queries = len(self.pending_queries)
-        preferences = np.zeros(n_pending_queries, dtype=np.float32)
         requests.post(self.server_url + "videos", json={"n_pending_queries": n_pending_queries})
 
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
@@ -74,15 +75,23 @@ class PrefqGatherer(SynchronousHumanGatherer):
                 output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
             )
 
+
             self._send_videos_to_server(query_id)
 
-        
+
         feedback_data = self._get_feedback_from_server()
 
-        for query_id, is_left_preferred in feedback_data.items():
-            print(f"    Query ID: {query_id}    Left Video Preferred: {is_left_preferred}")
-            preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
-            preferences[i] = 1 if is_left_preferred else 0
+        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+        for i, query_id in enumerate(self.pending_queries.keys()):
+            # Order of queries and preferences must match, but the server response is unordered
+            # due to:
+            #   (1) The asynchronous nature feedback collection (multiple users can send feedback)
+            #   (2) The nature of the flask.jsonify() function, that orders keys alphanumerically.
+            #       This behavior can be turned off, but makes no sense due to (1)
+            is_left_preferred = 1 if feedback_data[query_id] else 0
+            preferences[i] = is_left_preferred
+
+        print(f"\n\nPreferences:\n{np.vstack(preferences)}")
 
         queries = list(self.pending_queries.values())
         self.pending_queries.clear()
@@ -125,11 +134,12 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         response = requests.post(self.server_url + "videos", files=payload, timeout=10)
 
-        if response.status_code >= 200 % response.status_code < 400:
+        try:
+            response.raise_for_status()
             print("PrefqGatherer: Payload transferred")
-        else:
-            print("PrefqGatherer: Error while sending videos")
-            print(response.status_code)
+        except requests.exceptions.HTTPError as http_error:
+            print(f"PrefqGatherer: Error while sending videos: {http_error}")
+            raise http_error
 
         print("PrefqGatherer: ...videos sent to server\n")
 
@@ -143,26 +153,32 @@ class PrefqGatherer(SynchronousHumanGatherer):
             all feedback data from the Feedback Client.
         """
 
-        print("\n\PrefqGatherer: Starting request_feedback() [...]")
+        print("\nPrefqGatherer: Starting request_feedback() [...]")
         
         def _wait_for_feedback_request(url):
             while True:
-                time.sleep(5)
-                response = requests.get(url, timeout=5)
-                if response.status_code == 200:
-                    feedback_data = response.json()
-                    if feedback_data == {}:
-                        print("Query Client: Waiting for feedback...")
-                        continue
-                    else: 
-                        print("Query Client: Feedback received")
-                        break
+                try:
+                    time.sleep(5)
+                    response = requests.get(url, timeout=5)
+                    if response.status_code == 200:
+                        feedback_data = response.json()
+                        if feedback_data == {}:
+                            print("Query Client: Waiting for feedback...")
+                            continue
+                        else: 
+                            print("Query Client: Feedback received")
+                            break
+                except requests.exceptions.Timeout as timeout:
+                    print("Query Client: Timeout error occurred while waiting for feedback.")
+                    raise timeout
+                except requests.exceptions.RequestException as request_exception:
+                    print(f"Query Client: An error occurred while waiting for feedback: {e}")
+                    raise request_exception
             return feedback_data
 
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
         return feedback_data
-
-
+    
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
 
@@ -172,52 +188,71 @@ venv = make_vec_env(env_name = "Pendulum-v1",
                     env_make_kwargs={"render_mode": "rgb_array"},
 )
 
-reward_net = BasicRewardNet(
-    venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
-)
+class EnvClosingContext():
+    def __init__(self, env):
+        self.env = env
 
-fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
-preference_model = preference_comparisons.PreferenceModel(reward_net)
-reward_trainer = preference_comparisons.BasicRewardTrainer(
-    preference_model=preference_model,
-    loss=preference_comparisons.CrossEntropyRewardLoss(),
-    epochs=3,
-    rng=rng,
-)
+    def __enter__(self):
+        pass
 
-agent = PPO(
-    policy=FeedForward32Policy,
-    policy_kwargs=dict(
-        features_extractor_class=NormalizeFeaturesExtractor,
-        features_extractor_kwargs=dict(normalize_class=RunningNorm),
-    ),
-    env=venv,
-    n_steps=2048 // venv.num_envs,
-    seed=0,
-)
+    def __exit__(self, type , value, traceback):
+        self.env.close()
 
-trajectory_generator = preference_comparisons.AgentTrainer(
-    algorithm=agent,
-    reward_fn=reward_net,
-    venv=venv,
-    exploration_frac=0.0,
-    rng=rng,
-)
+with EnvClosingContext(venv):
+    
 
-gatherer = PrefqGatherer(video_dir = video_dir, server_url=SERVER_URL)
-querent = preference_comparisons.PreferenceQuerent()
+    reward_net = BasicRewardNet(
+        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
+    )
 
-pref_comparisons = preference_comparisons.PreferenceComparisons(
-    trajectory_generator,
-    reward_net,
-    num_iterations=5,
-    fragmenter=fragmenter,
-    preference_gatherer=gatherer,
-    reward_trainer=reward_trainer,
-    initial_epoch_multiplier=1,
-)
+    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
+    preference_model = preference_comparisons.PreferenceModel(reward_net)
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        preference_model=preference_model,
+        loss=preference_comparisons.CrossEntropyRewardLoss(),
+        epochs=10,
+        rng=rng,
+    )
 
-pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+    agent = PPO(
+        policy=FeedForward32Policy,
+        policy_kwargs=dict(
+            features_extractor_class=NormalizeFeaturesExtractor,
+            features_extractor_kwargs=dict(normalize_class=RunningNorm),
+        ),
+        env=venv,
+        n_steps=2048 // venv.num_envs,
+        clip_range=0.1,
+        ent_coef=0.01,
+        gae_lambda=0.95,
+        n_epochs=10,
+        gamma=0.97,
+        learning_rate=2e-3,
+        seed=0,
+    )
 
-reward, _ = evaluate_policy(agent.policy, venv, 10)
-print("Reward:", reward)
+    trajectory_generator = preference_comparisons.AgentTrainer(
+        algorithm=agent,
+        reward_fn=reward_net,
+        venv=venv,
+        exploration_frac=0.05,
+        rng=rng,
+    )
+
+    gatherer = PrefqGatherer(video_dir = video_dir, server_url=SERVER_URL)
+    querent = preference_comparisons.PreferenceQuerent()
+
+    pref_comparisons = preference_comparisons.PreferenceComparisons(
+        trajectory_generator,
+        reward_net,
+        num_iterations=60,
+        fragmenter=fragmenter,
+        preference_gatherer=gatherer,
+        reward_trainer=reward_trainer,
+        initial_epoch_multiplier=1,
+    )
+
+    pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+
+    reward, _ = evaluate_policy(agent.policy, venv, 10)
+    print("Reward:", reward)
