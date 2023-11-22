@@ -23,6 +23,7 @@ from imitation.algorithms.preference_comparisons import (
     write_fragment_video,
 )
 from imitation.data.types import TrajectoryWithRewPair
+from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.util import logger as imit_logger
@@ -30,8 +31,6 @@ from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-
-from prefq.examples.updated_imitation_modules import RenderImageInfoWrapper
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
