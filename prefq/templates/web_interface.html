@@ -67,15 +67,18 @@
   </div>
 
     <script src="{{ url_for('static', filename='web_interface.js') }}"> </script>
+    
+    <script>
+      // Add event listeners for left and right arrow keydown events
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowLeft') {
+          document.getElementById('left_preferred').click();
+        } else if (event.key === 'ArrowRight') {
+          document.getElementById('right_preferred').click();
+        }
+      });
+    </script>
         
   </body>
   
-  </html>
-  
-  
-
-  
-
-
-
-
+</html>

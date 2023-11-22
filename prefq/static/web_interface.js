@@ -73,7 +73,7 @@ function request_videos() {
 function attachEventHandlers() {
 
     // update variables
-    on_left_preferred  = document.getElementById('left_preferred');
+    on_left_preferred = document.getElementById('left_preferred');
     on_right_preferred = document.getElementById('right_preferred');
     video_filename_left = document.getElementById("video_filename_left").textContent;
     video_filename_right = document.getElementById("video_filename_right").textContent;
@@ -91,7 +91,6 @@ function attachEventHandlers() {
     });
 
     is_left_preferred = null;
-
 }
 
 
