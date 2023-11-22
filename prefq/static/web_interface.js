@@ -70,16 +70,6 @@ function request_videos() {
 }
 
 
-const beforeUnloadHandler = (event) => {
-    event.preventDefault();
-
-    if (is_left_preferred === null) {
-        send_data();
-    }
-
-    event.returnValue = true;
-}
-
 function attachEventHandlers() {
 
     // update variables
@@ -102,7 +92,6 @@ function attachEventHandlers() {
 
     is_left_preferred = null;
 
-    window.addEventListener('beforeunload', beforeUnloadHandler);
 }
 
 

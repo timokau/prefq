@@ -5,10 +5,10 @@
 # pylint: disable=R0801
 
 import os
+import queue
 from urllib.parse import unquote
 
 import flask
-import queue
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -37,17 +37,16 @@ def index():
     return response  # Update Client Interface
 
 
-
 def load_web_interface():
     """Send HTML interface to Feedback Client"""
 
     print("\n\nServer: Starting load_web_interface() [...] ")
-    
+
     is_video_available = not pending_queries.empty()
 
     if is_video_available:
         print("Server: [...] Terminating load_web_interface()")
-        video_filename_left, video_filename_right = pending_queries.get()
+        (video_filename_left, video_filename_right) = pending_queries.queue[0]
         return flask.render_template(
             "web_interface.html",
             video_filename_left=video_filename_left,
@@ -106,18 +105,14 @@ def receive_feedback():
 
     query_id = left_filename[: -len("-left.webm")]
 
-    print("Server: Received feedback")
-    print(f"    Query ID: {query_id}")
-    print(f"    Left Preferred: {is_left_preferred}")
+    # Check if filenames match queue
+    # To ensure correct implementation during the future
+    # development process, this check should remain ad interim.
+    if (left_filename, right_filename) != pending_queries.queue[0]:
+        raise ValueError("Left video filename does not match queue")
 
-    # Check if feedback was given - if not, refill queue
-    if is_left_preferred is None:
-        print("Server: No feedback received")
-        right_filename = query_id + "-right.webm"
-        pending_queries.put(left_filename)
-        pending_queries.put(right_filename)
-        print("Server: [...] Terminating receive_feedback()")
-        return jsonify({"success": True})
+    # Remove videos from queue
+    pending_queries.get()
 
     # Save feedback
     new_data = {query_id: is_left_preferred}
@@ -128,12 +123,11 @@ def receive_feedback():
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
 
     print("Server: Feedback stored")
-    for qID, boolean in feedback_data.items():
-        print(f"    Query ID: {qID}    Left Preferred: {boolean}")
+    for q_id, boolean in feedback_data.items():
+        print(f"    Query ID: {q_id}    Left Preferred: {boolean}")
 
     print("\nServer: [...] Terminating receive_feedback()")
     return jsonify({"success": True})
-
 
 
 @app.route("/feedback", methods=["GET"])
