@@ -5,10 +5,10 @@
 # pylint: disable=R0801
 
 import os
-import queue
 from urllib.parse import unquote
 
 import flask
+import queue
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -35,6 +35,7 @@ def index():
     response = app.make_response(response_data)
 
     return response  # Update Client Interface
+
 
 
 def load_web_interface():
@@ -132,6 +133,7 @@ def receive_feedback():
 
     print("\nServer: [...] Terminating receive_feedback()")
     return jsonify({"success": True})
+
 
 
 @app.route("/feedback", methods=["GET"])
