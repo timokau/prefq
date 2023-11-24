@@ -5,6 +5,7 @@
 # pylint: disable=R0801
 
 import os
+import queue
 from urllib.parse import unquote
 
 import flask
@@ -14,15 +15,8 @@ app = Flask(__name__)
 
 app.config["VIDEO_FOLDER"] = "videos"
 
-# Global counter variable needed for keeping track of evaluated videos
-# In future alternative solution shall be implemented (eg session variable)
-# Pylint does not like globals and thinks every global variabl should be a constant
-# (all uppercase). Therefore we need to ignore invalid-name here
-# pylint: disable=invalid-name
-n_pending_queries = 0
-videos_rendered = 0
 feedback_data = {}
-filenames_array = []
+pending_queries = queue.Queue()
 
 
 def before_first_request():
@@ -46,25 +40,17 @@ def index():
 def load_web_interface():
     """Send HTML interface to Feedback Client"""
 
-    # should be replaced by flask session object
-    # pylint: disable=global-statement
-    global videos_rendered
-
-    available_videos = len(filenames_array) - videos_rendered
-    is_video_available = available_videos > 0 and len(filenames_array) != 0
-
     print("\n\nServer: Starting load_web_interface() [...] ")
-    print("Server: Evaluated Videos: " + str(videos_rendered))
-    print("Server: Available Videos: " + str(available_videos))
+
+    is_video_available = not pending_queries.empty()
 
     if is_video_available:
-        videos_rendered += 2
-
         print("Server: [...] Terminating load_web_interface()")
+        (video_filename_left, video_filename_right) = pending_queries.queue[0]
         return flask.render_template(
             "web_interface.html",
-            video_filename_left=filenames_array[videos_rendered - 2],
-            video_filename_right=filenames_array[videos_rendered - 1],
+            video_filename_left=video_filename_left,
+            video_filename_right=video_filename_right,
         )
 
     print("Server: [...] No data available")
@@ -77,34 +63,19 @@ def receive_videos():
 
     print("\n\nServer: Starting receive_videos() [...]")
 
-    # should be replaced by flask session object
-    # pylint: disable=global-statement
-    global n_pending_queries
-
-    if n_pending_queries == 0:
-        data = flask.request.json
-        n_pending_queries = data["n_pending_queries"]
-        print("Server: Pending Queries: " + str(n_pending_queries))
-        return "Server: [...] Terminating receive_videos()"
-
-    # unquote() decodes url-encoded characters
-    # .filename needs to be called to access json text data
-    # strip('"') removes decoded quotation marks
     print("Server: Receiving videos...")
     query_id = unquote(request.files.get("query_id").filename).strip('"')
     left_filename = query_id + "-left.webm"
     right_filename = query_id + "-right.webm"
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
+    query_pair = (left_filename, right_filename)
     print(f"    Query ID: {query_id}")
     print("Server: ...Videos received")
 
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
-    filenames_array.append(left_filename)
-    filenames_array.append(right_filename)
-    # Add empty feedback value for newly received, unevaluated data
-
+    pending_queries.put(query_pair)
     print("Server: ...Videos stored locally")
 
     print("Server: [...] Terminating receive_videos()")
@@ -125,12 +96,6 @@ def receive_feedback():
 
     print("\n\nServer: Starting receive_feedback() [...]")
 
-    # should be replaced by flask session object
-    # pylint: disable=global-statement
-    # pylint: disable=global-variable-not-assigned
-    global feedback_data
-    global n_pending_queries
-
     data = flask.request.json  # Represents incoming client http request in json format
 
     # Extract received JSON data
@@ -140,26 +105,28 @@ def receive_feedback():
 
     query_id = left_filename[: -len("-left.webm")]
 
-    # Check for defective msg transfer
-    if is_left_preferred is None:
-        return jsonify({"success": False})
+    # Check if filenames match queue
+    # To ensure correct implementation during the future
+    # development process, this check should remain ad interim.
+    if (left_filename, right_filename) != pending_queries.queue[0]:
+        raise ValueError("Left video filename does not match queue")
+
+    # Remove videos from queue
+    pending_queries.get()
 
     # Save feedback
     new_data = {query_id: is_left_preferred}
     feedback_data.update(new_data)
-    n_pending_queries -= 1
 
     # Remove videos
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
 
-    print("\nServer: Feedback stored")
-    print("     Feedback Data:")
-    for qID, boolean in feedback_data.items():
-        print(f"    Query ID: {qID}    Left Preferred: {boolean}")
+    print("Server: Feedback stored")
+    for q_id, boolean in feedback_data.items():
+        print(f"    Query ID: {q_id}    Left Preferred: {boolean}")
 
     print("\nServer: [...] Terminating receive_feedback()")
-
     return jsonify({"success": True})
 
 
@@ -169,7 +136,7 @@ def send_feedback():
 
     print("\n\nServer: Starting send_feedback() [...]")
 
-    if n_pending_queries == 0:
+    if len(pending_queries.queue) == 0:
         print("Feddback fully evaluated")
         feedback_data_copy = feedback_data.copy()
         feedback_data.clear()
@@ -177,7 +144,7 @@ def send_feedback():
         return jsonify(feedback_data_copy)
 
     print("Feedback not fully evaluated")
-    print("Remaining Queries: " + str(n_pending_queries))
+    print("Remaining Queries: " + str(len(pending_queries.queue)))
     print("Server: [...] Terminating send_feedback()")
     empty_dict = {}
     return jsonify(empty_dict)

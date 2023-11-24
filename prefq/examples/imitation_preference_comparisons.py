@@ -23,6 +23,7 @@ from imitation.algorithms.preference_comparisons import (
     write_fragment_video,
 )
 from imitation.data.types import TrajectoryWithRewPair
+from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.policies.base import FeedForward32Policy, NormalizeFeaturesExtractor
 from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.util import logger as imit_logger
@@ -30,8 +31,6 @@ from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-
-from prefq.examples.updated_imitation_modules import RenderImageInfoWrapper
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
@@ -59,9 +58,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
-
-        n_pending_queries = len(self.pending_queries)
-        requests.post(self.server_url + "videos", json={"n_pending_queries": n_pending_queries})
 
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
             write_fragment_video(
@@ -195,12 +191,10 @@ class EnvClosingContext():
     def __enter__(self):
         pass
 
-    def __exit__(self, type , value, traceback):
+    def __exit__(self, type, value, traceback):
         self.env.close()
 
 with EnvClosingContext(venv):
-    
-
     reward_net = BasicRewardNet(
         venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
     )
