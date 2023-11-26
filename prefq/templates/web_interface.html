@@ -1,3 +1,10 @@
+<!-- 
+This module contains the structure and layout of the web page for the Feedback Client.
+
+By attaching event listeners to the buttons, the users can select their preferred solution
+either by clicking or by pressing their left or right arrow keys.
+-->
+
 <!DOCTYPE html>
 
 <html>
@@ -52,7 +59,7 @@
   
   <div class="video-container">
 
-    <!-- url_for('serve_video', ...) :: calls the serve_video function on the server -->
+    <!-- url_for('serve_video', ...) calls the serve_video function on the server -->
     <div class="video">
         <video id="left_video" src="{{ url_for('serve_video', filename=video_filename_left) }}" controls loop autoplay></video>
         <button class="button" id="left_preferred" >this is my preferred solution</button>

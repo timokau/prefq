@@ -1,8 +1,37 @@
-"""A webserver that asks the user preference queries."""
+"""
+This module provides a Flask-based webserver that serves a web interface for
 
-# disable pylint warning for similar lines in server.py and imitation_server.py
-# on a long term both files shall be merged
-# pylint: disable=R0801
+    (1) Query Clients:
+        (a) send queries to the server
+        (b) request feedback from the server
+
+    (2) Feedback Clients:
+        (a) receive queries
+        (b) evaluate queries
+        (c) send feedback to the server
+
+Seperating the Query Client from the server allows for flexible design, as the
+Query Client can be implemented in any programming language & any desired behavior.
+
+By implementing a server architecture, that only reacts to incoming requests,
+without performing computationally expensive tasks, the server can be run
+with minimal hardware requirements, e.g. on a Raspberry Pi or a cloud server.
+
+Additionally, the Query Client script could for example be run from a laptop, and
+can be disconnected from the web at any given moment, without affecting the server.
+
+Aspects to be taken into consideration, for a customized Query Client implementation:
+    (1) Query Client sends a POST request with a unique query ID & a pair of queries
+    (2) Query Client sends a GET request to receive feedback from the server
+        (a) if feedback is not yet fully availible, resend GET request later
+        (b) if feedback is fully availible, return to (1) whenever desired
+
+Examples for both static & dynamic queries are provided within this project.
+
+By implementing a queue, that only deletes queries after receiving feedback,
+the server can ensure, that unevaluated Queries due to unexpected events
+(e.g. Feedback Client crash) can be evaluated in the future.
+"""
 
 import os
 import queue
@@ -29,12 +58,27 @@ def before_first_request():
 
 @app.route("/", methods=["GET"])
 def index():
-    """Define GET-Request behavior"""
+    """
+    React to GET request, when server URL is called in a browser.
+
+    This function is only called by the Feedback Client, to receive an
+    HTML interface, that allows the user to evaluate the query.
+
+    After evaluation & subsequent POST request containing the feedback,
+    this function is automatically triggered again by the javascript
+    code running within the HTML interface, reloading the HTML interface
+    with new queries, if availible.
+            (behavior can be modified in web_interface.js)
+
+    Whenever no data is availible, the corresponding HTML interface
+    autoamtically reloads every 2 seconds, until new data is availible.
+            (behavior can be modified in no_data_availible.html)
+    """
 
     response_data = load_web_interface()
     response = app.make_response(response_data)
 
-    return response  # Update Client Interface
+    return response  # Update Feedback Client Interface
 
 
 def load_web_interface():
@@ -59,7 +103,18 @@ def load_web_interface():
 
 @app.route("/videos", methods=["POST"])
 def receive_videos():
-    """Receive new queries from a Query Client."""
+    """
+    (1) Receive new queries from a Query Client.
+    (2) Store queries locally.
+    (3) Fill queue with new queries.
+
+    This function can be called by the Query Client, whenever a new batch of queries
+    is availible. The Query Client sends a POST request, containing a unique query ID
+    and a pair of queries as binary data (octet-stream).
+
+    This is done in order to implement this server in the spirit
+    of a REST-API, which requires .json encoded data.
+    """
 
     print("\n\nServer: Starting receive_videos() [...]")
 
@@ -92,7 +147,7 @@ def serve_video(filename):
 
 @app.route("/feedback", methods=["POST"])
 def receive_feedback():
-    """Receive and store feedback from feedback client"""
+    """Receive and store client feedback"""
 
     print("\n\nServer: Starting receive_feedback() [...]")
 
@@ -111,17 +166,13 @@ def receive_feedback():
     if (left_filename, right_filename) != pending_queries.queue[0]:
         raise ValueError("Left video filename does not match queue")
 
-    # Remove videos from queue
+    # Remove videos from queue & delete locally stored videos
     pending_queries.get()
-
-    # Save feedback
-    new_data = {query_id: is_left_preferred}
-    feedback_data.update(new_data)
-
-    # Remove videos
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
 
+    new_data = {query_id: is_left_preferred}
+    feedback_data.update(new_data)
     print("Server: Feedback stored")
     for q_id, boolean in feedback_data.items():
         print(f"    Query ID: {q_id}    Left Preferred: {boolean}")

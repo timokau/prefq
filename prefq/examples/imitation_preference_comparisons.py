@@ -1,8 +1,10 @@
-# This example is taken from [1] (MIT licensed). It does not currently use PrefQ.
-# It only serves to show that the `imitation` dependency is working.
-# [1] https://github.com/HumanCompatibleAI/imitation/blob/19c7f35d7cac97e623f352d367fa384f5f3bb465/docs/algorithms/preference_comparisons.rst
+"""
+This module provides an example implementation for dynamic queries 
+and integrating our PrefQ server into the imitation library.
+"""
 
-# Hyperparameters used in this file have been taken from https://github.com/HumanCompatibleAI/imitation/pull/771
+# Hyperparameters used in this file have been taken from
+# https://github.com/HumanCompatibleAI/imitation/pull/771
 
 # Disable formatting and linters so we can keep the example as close to the original as possible for now.
 # fmt: off
@@ -34,9 +36,17 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
-# This class is a slightly modified version of the PrefCollectGatherer introduced in https://github.com/HumanCompatibleAI/imitation/pull/716
+
 class PrefqGatherer(SynchronousHumanGatherer):
-    """Gatherer for synchronous communication with a flask webserver."""
+    """
+    Gatherer for synchronous communication with a flask webserver.
+
+    Sends video pairs associated with a Query-ID to server.
+    Then, in a blocking while loop waits for full evaluation of all queries.
+
+    This class is a slightly modified version of the PrefCollectGatherer
+    introduced in https://github.com/HumanCompatibleAI/imitation/pull/716
+    """
 
     def __init__(
         self,
@@ -71,19 +81,20 @@ class PrefqGatherer(SynchronousHumanGatherer):
                 output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
             )
 
-
             self._send_videos_to_server(query_id)
-
 
         feedback_data = self._get_feedback_from_server()
 
         preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
         for i, query_id in enumerate(self.pending_queries.keys()):
-            # Order of queries and preferences must match, but the server response is unordered
-            # due to:
-            #   (1) The asynchronous nature feedback collection (multiple users can send feedback)
-            #   (2) The nature of the flask.jsonify() function, that orders keys alphanumerically.
-            #       This behavior can be turned off, but makes no sense due to (1)
+            # Order of queries and preferences must match, but the
+            # server response is unordered due to:
+            #   (1) The asynchronous nature feedback collection
+            #       (multiple users can send feedback)
+            #   (2) The nature of the flask.jsonify() function,
+            #       that orders keys alphanumerically.
+            #       This behavior can be turned off,
+            #       but makes no sense due to (1)
             is_left_preferred = 1 if feedback_data[query_id] else 0
             preferences[i] = is_left_preferred
 
@@ -93,7 +104,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
         self.pending_queries.clear()
 
         return queries, preferences
-
 
     def _send_videos_to_server(self, query_id):
         print("\nPrefqGatherer: sending videos to server...")
@@ -139,18 +149,17 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         print("PrefqGatherer: ...videos sent to server\n")
 
-
     def _get_feedback_from_server(self):
         """
         GET-Request: Receive client feedback from Server
-        
+
             After rendering all videos, the PrefQGatherer enters
             a blocking while loop, until the server has received
             all feedback data from the Feedback Client.
         """
 
         print("\nPrefqGatherer: Starting request_feedback() [...]")
-        
+
         def _wait_for_feedback_request(url):
             while True:
                 try:
@@ -160,31 +169,42 @@ class PrefqGatherer(SynchronousHumanGatherer):
                         feedback_data = response.json()
                         if feedback_data == {}:
                             print("Query Client: Waiting for feedback...")
-                            continue
-                        else: 
+                        else:
                             print("Query Client: Feedback received")
                             break
                 except requests.exceptions.Timeout as timeout:
-                    print("Query Client: Timeout error occurred while waiting for feedback.")
+                    print("Query Client: Timeout while waiting for feedback.")
                     raise timeout
                 except requests.exceptions.RequestException as request_exception:
-                    print(f"Query Client: An error occurred while waiting for feedback: {e}")
+                    print(
+                        "Query Client: Error while waiting for feedback:",
+                        request_exception,
+                    )
                     raise request_exception
             return feedback_data
 
         feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
         return feedback_data
-    
+
+
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
 
-venv = make_vec_env(env_name = "Pendulum-v1",
-                    rng=rng,
-                    post_wrappers=[lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)],
-                    env_make_kwargs={"render_mode": "rgb_array"},
+# By using the use_file_cache=True we avoid RAM overflow,
+# enabeling us to run this example even with only 8GB RAM.
+venv = make_vec_env(
+    env_name="Pendulum-v1",
+    rng=rng,
+    post_wrappers=[
+        lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)
+    ],
+    env_make_kwargs={"render_mode": "rgb_array"},
 )
 
-class EnvClosingContext():
+
+class EnvClosingContext:
+    """Ensures that all trajectories will be deleted in case of an interruption."""
+
     def __init__(self, env):
         self.env = env
 
@@ -194,9 +214,12 @@ class EnvClosingContext():
     def __exit__(self, type, value, traceback):
         self.env.close()
 
+
 with EnvClosingContext(venv):
     reward_net = BasicRewardNet(
-        venv.observation_space, venv.action_space, normalize_input_layer=RunningNorm,
+        venv.observation_space,
+        venv.action_space,
+        normalize_input_layer=RunningNorm,
     )
 
     fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
@@ -233,7 +256,7 @@ with EnvClosingContext(venv):
         rng=rng,
     )
 
-    gatherer = PrefqGatherer(video_dir = video_dir, server_url=SERVER_URL)
+    gatherer = PrefqGatherer(video_dir=video_dir, server_url=SERVER_URL)
     querent = preference_comparisons.PreferenceQuerent()
 
     pref_comparisons = preference_comparisons.PreferenceComparisons(
