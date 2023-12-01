@@ -1,3 +1,11 @@
+/**
+    * This file contains the Javascript code that is executed together with web_interface.html.
+    * It is responsible for sending user feedback to the server and requesting new videos from the server.
+
+By sending a GET-request to "/", the index function will be called on the server, 
+which in turn will return a new pair of videos to the feedback client.
+ */
+
 // Get buttons
 var on_left_preferred       = document.getElementById('left_preferred')
 var on_right_preferred      = document.getElementById('right_preferred')
@@ -17,8 +25,7 @@ function send_data() {
     xhr.open('POST', '/feedback')                               // Set the HTTP method and endpoint URL
     xhr.setRequestHeader('Content-Type', 'application/json')    // Specify JSON datatype for HTTP header
 
-    // Define http status code behavior
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function() {                       // Define http status code behavior
         
         if (xhr.status >= 200 && xhr.status < 400 && xhr.readyState === XMLHttpRequest.DONE) // if http status between 200-399 (indicates success)  &&  if request has been sent
             // Handle successful requests
