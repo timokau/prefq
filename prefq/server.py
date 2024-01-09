@@ -33,11 +33,13 @@ the server can ensure, that unevaluated Queries due to unexpected events
 (e.g. Feedback Client crash) can be evaluated in the future.
 """
 
+import argparse
 import os
 import queue
 from urllib.parse import unquote
 
 import flask
+import waitress
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -46,6 +48,10 @@ app.config["VIDEO_FOLDER"] = "videos"
 
 feedback_data = {}
 pending_queries = queue.Queue()
+
+DEFAULT_HOST = "localhost"
+DEFAULT_PORT = 5000
+DEFAULT_DEBUG = False
 
 
 def before_first_request():
@@ -202,5 +208,39 @@ def send_feedback():
 
 
 if __name__ == "__main__":
+    # parse host, port and server mode from command line
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=DEFAULT_HOST,
+        help="Specify the host (default: localhost)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help="Specify the port (default: 5000)",
+    )
+    parser.add_argument(
+        "--debug",
+        type=bool,
+        default=DEFAULT_DEBUG,
+        help="Specify debug mode (default: False)",
+    )
+
+    args = parser.parse_args()
+
+    host = args.host
+    port = args.port
+    debug = args.debug
+
     before_first_request()
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    print(f"Host: {host}, Port: {port},   Debug: {debug}\n\n")
+
+    # A detailled explanation of the benefits and drawbacks of using the
+    # development server can be found in the PrefQ documentation
+    if debug:
+        app.run(host=host, port=port, debug=debug)
+    else:
+        waitress.serve(app, host=host, port=port)
