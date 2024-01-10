@@ -10,15 +10,12 @@ and integrating our PrefQ server into the imitation library.
 # fmt: off
 # pylint: skip-file
 
-import json
 import os
 import pathlib
 import tempfile
-import time
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
-import requests
 from imitation.algorithms import preference_comparisons
 from imitation.algorithms.preference_comparisons import (
     SynchronousHumanGatherer,
@@ -33,6 +30,8 @@ from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+
+from prefq.query_client import QueryClient
 
 SERVER_URL = "http://127.0.0.1:5000/"
 
@@ -69,6 +68,8 @@ class PrefqGatherer(SynchronousHumanGatherer):
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
+        query_client = QueryClient(self.server_url)
+
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
             write_fragment_video(
                 query[0],
@@ -81,9 +82,9 @@ class PrefqGatherer(SynchronousHumanGatherer):
                 output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
             )
 
-            self._send_videos_to_server(query_id)
+            query_client.send_video_pair(query_id, f"{query_id}-left.webm", f"{query_id}-right.webm", self.video_dir)
 
-        feedback_data = self._get_feedback_from_server()
+        feedback_data = query_client.request_feedback()
 
         preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
         for i, query_id in enumerate(self.pending_queries.keys()):
@@ -104,88 +105,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
         self.pending_queries.clear()
 
         return queries, preferences
-
-    def _send_videos_to_server(self, query_id):
-        print("\nPrefqGatherer: sending videos to server...")
-
-        left_filename = f"{query_id}-left.webm"
-        right_filename = f"{query_id}-right.webm"
-
-        left_filepath = os.path.join(self.video_dir, left_filename)
-        right_filepath = os.path.join(self.video_dir, right_filename)
-
-        with open(left_filepath, "rb") as left_file, open(
-            right_filepath, "rb"
-        ) as right_file:
-            # Read the file data into memory
-            left_video_data = left_file.read()
-            right_video_data = right_file.read()
-
-        payload = {
-            "left_video": (
-                left_filename,
-                left_video_data,
-                "application/octet-stream",
-            ),
-            "right_video": (
-                right_filename,
-                right_video_data,
-                "application/octet-stream",
-            ),
-            "query_id": (
-                json.dumps(query_id),
-                "application/json",
-            ),
-        }
-
-        response = requests.post(self.server_url + "videos", files=payload, timeout=10)
-
-        try:
-            response.raise_for_status()
-            print("PrefqGatherer: Payload transferred")
-        except requests.exceptions.HTTPError as http_error:
-            print(f"PrefqGatherer: Error while sending videos: {http_error}")
-            raise http_error
-
-        print("PrefqGatherer: ...videos sent to server\n")
-
-    def _get_feedback_from_server(self):
-        """
-        GET-Request: Receive client feedback from Server
-
-            After rendering all videos, the PrefQGatherer enters
-            a blocking while loop, until the server has received
-            all feedback data from the Feedback Client.
-        """
-
-        print("\nPrefqGatherer: Starting request_feedback() [...]")
-
-        def _wait_for_feedback_request(url):
-            while True:
-                try:
-                    time.sleep(5)
-                    response = requests.get(url, timeout=5)
-                    if response.status_code == 200:
-                        feedback_data = response.json()
-                        if feedback_data == {}:
-                            print("Query Client: Waiting for feedback...")
-                        else:
-                            print("Query Client: Feedback received")
-                            break
-                except requests.exceptions.Timeout as timeout:
-                    print("Query Client: Timeout while waiting for feedback.")
-                    raise timeout
-                except requests.exceptions.RequestException as request_exception:
-                    print(
-                        "Query Client: Error while waiting for feedback:",
-                        request_exception,
-                    )
-                    raise request_exception
-            return feedback_data
-
-        feedback_data = _wait_for_feedback_request(self.server_url + "feedback")
-        return feedback_data
-
 
 rng = np.random.default_rng(0)
 video_dir = tempfile.mkdtemp(prefix="videos_")
