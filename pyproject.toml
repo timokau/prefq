@@ -11,6 +11,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.9"
 moviepy = "^1.0.3"
+waitress = "2.1.2"
 flask = "<2.3" # Since we rely on the before_first_request decorator (https://flask.palletsprojects.com/en/2.2.x/api/?highlight=before_first_request#flask.Flask.before_first_request)
 gymnasium = {extras = ["box2d"], version = "^0.29.1", optional = true}
 imitation = { git = "https://github.com/rk1a/imitation", branch = "human-prefs", optional = true}
