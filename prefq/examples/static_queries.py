@@ -26,8 +26,20 @@ def generate_query_id(left_filename, right_filename):
     return query_id
 
 
-def main(server_url):
+def main():
     """Send the example queries and poll for feedback."""
+
+    # parse server url
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--url",
+        type=str,
+        default=DEFAULT_SERVER_URL,
+        help="Specify the server url (default: http://localhost:5000/)",
+    )
+
+    args = parser.parse_args()
+    server_url = args.url
 
     query_client = QueryClient(server_url)
 
@@ -42,16 +54,4 @@ def main(server_url):
 
 
 if __name__ == "__main__":
-    # parse server url
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--url",
-        type=str,
-        default=DEFAULT_SERVER_URL,
-        help="Specify the server url (default: http://localhost:5000/)",
-    )
-
-    args = parser.parse_args()
-    SERVER_URL = args.url
-
-    main(server_url=SERVER_URL)
+    main()

@@ -207,7 +207,9 @@ def send_feedback():
     return jsonify(empty_dict)
 
 
-if __name__ == "__main__":
+def main():
+    """Start server"""
+
     # parse host, port and server mode from command line
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -244,3 +246,7 @@ if __name__ == "__main__":
         app.run(host=host, port=port, debug=debug)
     else:
         waitress.serve(app, host=host, port=port)
+
+
+if __name__ == "__main__":
+    main()

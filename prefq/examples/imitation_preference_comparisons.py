@@ -107,20 +107,6 @@ class PrefqGatherer(SynchronousHumanGatherer):
 
         return queries, preferences
 
-rng = np.random.default_rng(0)
-video_dir = tempfile.mkdtemp(prefix="videos_")
-
-# By using the use_file_cache=True we avoid RAM overflow,
-# enabeling us to run this example even with only 8GB RAM.
-venv = make_vec_env(
-    env_name="Pendulum-v1",
-    rng=rng,
-    post_wrappers=[
-        lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)
-    ],
-    env_make_kwargs={"render_mode": "rgb_array"},
-)
-
 
 class EnvClosingContext:
     """Ensures that all trajectories will be deleted in case of an interruption."""
@@ -134,73 +120,94 @@ class EnvClosingContext:
     def __exit__(self, type, value, traceback):
         self.env.close()
 
-# parse server url
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--url",
-    type=str,
-    default=DEFAULT_SERVER_URL,
-    help="Specify the server url (default: http://localhost:5000/)",
-)
+def main():
+    """Send queries, gather feedback and train imitation agent."""
 
-args = parser.parse_args()
-SERVER_URL = args.url
-
-with EnvClosingContext(venv):
-    reward_net = BasicRewardNet(
-        venv.observation_space,
-        venv.action_space,
-        normalize_input_layer=RunningNorm,
+    # parse server url
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--url",
+        type=str,
+        default=DEFAULT_SERVER_URL,
+        help="Specify the server url (default: http://localhost:5000/)",
     )
 
-    fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
-    preference_model = preference_comparisons.PreferenceModel(reward_net)
-    reward_trainer = preference_comparisons.BasicRewardTrainer(
-        preference_model=preference_model,
-        loss=preference_comparisons.CrossEntropyRewardLoss(),
-        epochs=10,
+    args = parser.parse_args()
+    SERVER_URL = args.url
+
+    rng = np.random.default_rng(0)
+    video_dir = tempfile.mkdtemp(prefix="videos_")
+
+    # By using the use_file_cache=True we avoid RAM overflow,
+    # enabeling us to run this example even with only 8GB RAM.
+    venv = make_vec_env(
+        env_name="Pendulum-v1",
         rng=rng,
+        post_wrappers=[
+            lambda env, env_id: RenderImageInfoWrapper(env, use_file_cache=True)
+        ],
+        env_make_kwargs={"render_mode": "rgb_array"},
     )
 
-    agent = PPO(
-        policy=FeedForward32Policy,
-        policy_kwargs=dict(
-            features_extractor_class=NormalizeFeaturesExtractor,
-            features_extractor_kwargs=dict(normalize_class=RunningNorm),
-        ),
-        env=venv,
-        n_steps=2048 // venv.num_envs,
-        clip_range=0.1,
-        ent_coef=0.01,
-        gae_lambda=0.95,
-        n_epochs=10,
-        gamma=0.97,
-        learning_rate=2e-3,
-        seed=0,
-    )
+    with EnvClosingContext(venv):
+        reward_net = BasicRewardNet(
+            venv.observation_space,
+            venv.action_space,
+            normalize_input_layer=RunningNorm,
+        )
 
-    trajectory_generator = preference_comparisons.AgentTrainer(
-        algorithm=agent,
-        reward_fn=reward_net,
-        venv=venv,
-        exploration_frac=0.05,
-        rng=rng,
-    )
+        fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
+        preference_model = preference_comparisons.PreferenceModel(reward_net)
+        reward_trainer = preference_comparisons.BasicRewardTrainer(
+            preference_model=preference_model,
+            loss=preference_comparisons.CrossEntropyRewardLoss(),
+            epochs=10,
+            rng=rng,
+        )
 
-    gatherer = PrefqGatherer(video_dir=video_dir, server_url=SERVER_URL)
-    querent = preference_comparisons.PreferenceQuerent()
+        agent = PPO(
+            policy=FeedForward32Policy,
+            policy_kwargs=dict(
+                features_extractor_class=NormalizeFeaturesExtractor,
+                features_extractor_kwargs=dict(normalize_class=RunningNorm),
+            ),
+            env=venv,
+            n_steps=2048 // venv.num_envs,
+            clip_range=0.1,
+            ent_coef=0.01,
+            gae_lambda=0.95,
+            n_epochs=10,
+            gamma=0.97,
+            learning_rate=2e-3,
+            seed=0,
+        )
 
-    pref_comparisons = preference_comparisons.PreferenceComparisons(
-        trajectory_generator,
-        reward_net,
-        num_iterations=60,
-        fragmenter=fragmenter,
-        preference_gatherer=gatherer,
-        reward_trainer=reward_trainer,
-        initial_epoch_multiplier=1,
-    )
+        trajectory_generator = preference_comparisons.AgentTrainer(
+            algorithm=agent,
+            reward_fn=reward_net,
+            venv=venv,
+            exploration_frac=0.05,
+            rng=rng,
+        )
 
-    pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+        gatherer = PrefqGatherer(video_dir=video_dir, server_url=SERVER_URL)
+        querent = preference_comparisons.PreferenceQuerent()
 
-    reward, _ = evaluate_policy(agent.policy, venv, 10)
-    print("Reward:", reward)
+        pref_comparisons = preference_comparisons.PreferenceComparisons(
+            trajectory_generator,
+            reward_net,
+            num_iterations=60,
+            fragmenter=fragmenter,
+            preference_gatherer=gatherer,
+            reward_trainer=reward_trainer,
+            initial_epoch_multiplier=1,
+        )
+
+        pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+
+        reward, _ = evaluate_policy(agent.policy, venv, 10)
+        print("Reward:", reward)
+
+
+if __name__ == "__main__":
+    main()
