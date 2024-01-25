@@ -1,9 +1,11 @@
 """An example Query Client that sends static queries to the server and polls results."""
 
+import argparse
+
 from prefq.query_client import QueryClient
 
 AVAILABLE_VIDEOS = 10
-QUERY_SERVER_URL = "http://localhost:5000/"
+DEFAULT_SERVER_URL = "http://localhost:5000/"
 VIDEO_DIR = "videos"
 VIDEO_PAIRS = [
     (f"{str(i).zfill(2)}.mp4", f"{str(i+1).zfill(2)}.mp4")
@@ -24,10 +26,10 @@ def generate_query_id(left_filename, right_filename):
     return query_id
 
 
-def main():
+def main(server_url):
     """Send the example queries and poll for feedback."""
 
-    query_client = QueryClient(QUERY_SERVER_URL)
+    query_client = QueryClient(server_url)
 
     for left_filename, right_filename in VIDEO_PAIRS:
         query_id = generate_query_id(left_filename, right_filename)
@@ -40,4 +42,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # parse server url
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--url",
+        type=str,
+        default=DEFAULT_SERVER_URL,
+        help="Specify the server url (default: http://localhost:5000/)",
+    )
+
+    args = parser.parse_args()
+    SERVER_URL = args.url
+
+    main(server_url=SERVER_URL)

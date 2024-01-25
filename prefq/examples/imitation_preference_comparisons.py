@@ -10,6 +10,7 @@ and integrating our PrefQ server into the imitation library.
 # fmt: off
 # pylint: skip-file
 
+import argparse
 import os
 import pathlib
 import tempfile
@@ -33,7 +34,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 from prefq.query_client import QueryClient
 
-SERVER_URL = "http://127.0.0.1:5000/"
+DEFAULT_SERVER_URL = "http://localhost:5000/"
 
 
 class PrefqGatherer(SynchronousHumanGatherer):
@@ -133,6 +134,17 @@ class EnvClosingContext:
     def __exit__(self, type, value, traceback):
         self.env.close()
 
+# parse server url
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--url",
+    type=str,
+    default=DEFAULT_SERVER_URL,
+    help="Specify the server url (default: http://localhost:5000/)",
+)
+
+args = parser.parse_args()
+SERVER_URL = args.url
 
 with EnvClosingContext(venv):
     reward_net = BasicRewardNet(

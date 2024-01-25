@@ -4,4 +4,4 @@ set -e
 set -o pipefail
 
 poetry install
-poetry run python3 -m prefq.examples.static_queries
+poetry run python3 -m prefq.examples.static_queries "$@"
