@@ -19,4 +19,14 @@ The high-level architecture is illustrated in the following diagram:
 
 ## Contributing
 
-This project uses [pre-commit](https://pre-commit.com/) for initial quality and consistency checks. To run these checks on each commit, simply execute `poetry run pre-commit install`. These checks will also be run on each GitHub pull request.
+This project uses [pre-commit](https://pre-commit.com/) for initial quality and consistency checks. To run these checks on each commit.
+
+1. install poetry: `curl -sSL https://install.python-poetry.org | python3 -`
+2. install pre-commit checks: `poetry run pre-commit install`
+
+For automatic code formatting according to these consistency checks you can use black in combination with pylint. This will ease your workflow, as your code will be adjusted automatically, instead of formatting everything manually. 
+
+1. `pip install pylint`
+2. `pip install black`
+
+Whenever you run `git commit`, pylint and black will attempt to [reformat](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html) your code on all staged changes. If changes are made you can just save the formatted file(s) and run `git add <formatted files>`.
