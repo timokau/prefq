@@ -16,6 +16,7 @@ class QueryClient:
     def send_video_pair(self, query_id, left_filename, right_filename, video_dir):
         """POST-Request: Send videos to Query Server"""
 
+        file_extension = left_filename.split(".")[1]
         left_video_file_path = os.path.join(video_dir, left_filename)
         right_video_file_path = os.path.join(video_dir, right_filename)
 
@@ -39,6 +40,10 @@ class QueryClient:
             ),
             "query_id": (
                 json.dumps(query_id),
+                "application/json",
+            ),
+            "file_extension": (
+                json.dumps(file_extension),
                 "application/json",
             ),
         }

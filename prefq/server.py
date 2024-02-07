@@ -125,9 +125,10 @@ def receive_videos():
     print("\n\nServer: Starting receive_videos() [...]")
 
     print("Server: Receiving videos...")
+    file_extension = unquote(request.files.get("file_extension").filename).strip('"')
     query_id = unquote(request.files.get("query_id").filename).strip('"')
-    left_filename = query_id + "-left.webm"
-    right_filename = query_id + "-right.webm"
+    left_filename = query_id + "-left." + file_extension
+    right_filename = query_id + "-right." + file_extension
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
     query_pair = (left_filename, right_filename)
