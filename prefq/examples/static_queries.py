@@ -6,7 +6,7 @@ from prefq.query_client import QueryClient
 
 AVAILABLE_VIDEOS = 10
 DEFAULT_SERVER_URL = "http://localhost:5000/"
-VIDEO_DIR = "videos"
+VIDEO_DIR = "prefq/examples/video-examples"
 VIDEO_PAIRS = [
     (f"{str(i).zfill(2)}.mp4", f"{str(i+1).zfill(2)}.mp4")
     for i in range(1, AVAILABLE_VIDEOS + 1, 2)
