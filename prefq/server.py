@@ -47,7 +47,8 @@ app = Flask(__name__)
 app.config["VIDEO_FOLDER"] = "videos"
 
 feedback_data = {}
-pending_queries = queue.Queue()
+query_queue = queue.Queue()
+queries_pending_response = []
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 5000
@@ -92,11 +93,23 @@ def load_web_interface():
 
     print("\n\nServer: Starting load_web_interface() [...] ")
 
-    is_video_available = not pending_queries.empty()
+    is_queue_empty = query_queue.empty()
+    is_pending_queries_empty = len(queries_pending_response) == 0
+
+    is_video_available = not (is_queue_empty and is_pending_queries_empty)
 
     if is_video_available:
         print("Server: [...] Terminating load_web_interface()")
-        (video_filename_left, video_filename_right) = pending_queries.queue[0]
+        if not is_queue_empty:
+            # Get query from queue
+            query = query_queue.get()
+            queries_pending_response.append(query)
+        else:
+            # Get query from list
+            query = queries_pending_response[0]
+
+        video_filename_left, video_filename_right = query
+
         return flask.render_template(
             "web_interface.html",
             video_filename_left=video_filename_left,
@@ -131,13 +144,13 @@ def receive_videos():
     file_extension = left_video.filename.split(".")[1]
     left_filename = query_id + "-left." + file_extension
     right_filename = query_id + "-right." + file_extension
-    query_pair = (left_filename, right_filename)
+    query = (left_filename, right_filename)
     print(f"    Query ID: {query_id}")
     print("Server: ...Videos received")
 
     left_video.save(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     right_video.save(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
-    pending_queries.put(query_pair)
+    query_queue.put(query)
     print("Server: ...Videos stored locally")
 
     print("Server: [...] Terminating receive_videos()")
@@ -164,17 +177,18 @@ def receive_feedback():
     is_left_preferred = data["is_left_preferred"]
     left_filename = data["video_filename_left"]
     right_filename = data["video_filename_right"]
+    query_id = left_filename.split("-left")[0]
 
-    query_id = left_filename[: -len("-left.webm")]
+    query = (left_filename, right_filename)
 
-    # Check if filenames match queue
-    # To ensure correct implementation during the future
-    # development process, this check should remain ad interim.
-    if (left_filename, right_filename) != pending_queries.queue[0]:
-        raise ValueError("Left video filename does not match queue")
+    # Check if received query is contained in query list
+    if query not in queries_pending_response:
+        print("Server: Query already evaluated")
+        print("Server: [...] Terminating receive_feedback()")
+        return jsonify({"success": True})
 
-    # Remove videos from queue & delete locally stored videos
-    pending_queries.get()
+    # Remove query from query list & delete locally stored videos
+    queries_pending_response.remove(query)
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], left_filename))
     os.remove(os.path.join(app.config["VIDEO_FOLDER"], right_filename))
 
@@ -194,15 +208,21 @@ def send_feedback():
 
     print("\n\nServer: Starting send_feedback() [...]")
 
-    if len(pending_queries.queue) == 0:
-        print("Feddback fully evaluated")
+    is_queue_empty = query_queue.empty()
+    is_pending_queries_empty = len(queries_pending_response) == 0
+
+    if is_queue_empty and is_pending_queries_empty:
+        print("Feedback fully evaluated")
         feedback_data_copy = feedback_data.copy()
         feedback_data.clear()
         print("Server: [...] Terminating send_feedback()")
         return jsonify(feedback_data_copy)
 
     print("Feedback not fully evaluated")
-    print("Remaining Queries: " + str(len(pending_queries.queue)))
+    print(
+        "Remaining Queries: "
+        + str(len(query_queue.queue) + len(queries_pending_response))
+    )
     print("Server: [...] Terminating send_feedback()")
     empty_dict = {}
     return jsonify(empty_dict)
