@@ -108,6 +108,10 @@ def load_web_interface():
             # Get query from list
             query = queries_pending_response[0]
 
+            # Put query at last position in list
+            queries_pending_response.pop(0)
+            queries_pending_response.append(query)
+
         video_filename_left, video_filename_right = query
 
         return flask.render_template(
