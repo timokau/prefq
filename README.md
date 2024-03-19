@@ -21,7 +21,7 @@ Seperating the Query Client from the Server allows for more flexibility. For ins
 3. Add poetry to PATH and make sure this persists across reboots. 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-echo 'export PATH="$HOME/bin:$PATH"' > ~/.bashrc
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
