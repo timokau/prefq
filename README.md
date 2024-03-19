@@ -17,11 +17,11 @@ Seperating the Query Client from the Server allows for more flexibility. For ins
 
 ### Clone the repository & install poetry (package manager)
 1. Clone the repository: `git clone https://github.com/timokau/prefq.git`
-2. Install poetry: `bash curl -sSL https://install.python-poetry.org | python3 - `
+2. Install poetry: `curl -sSL https://install.python-poetry.org | python3 - `
 3. Add poetry to PATH and make sure this persists across reboots. 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-echo 'export PATH="$HOME/bin:$PATH"' > ~/.bashrc
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
