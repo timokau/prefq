@@ -97,6 +97,22 @@ def decrypt(encrypted_message):
     return decrypted_message.decode()
 
 
+def encrypt(message):
+    """Encrypt strings using SSH"""
+
+    # pylint: disable=R0801
+    encrypted_message = app.config["PUBLIC_KEY"].encrypt(
+        message.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    encrypted_message = base64.b64encode(encrypted_message).decode("utf8")
+    return encrypted_message
+
+
 @app.route("/", methods=["GET"])
 def index():
     """
@@ -199,9 +215,14 @@ def receive_videos():
     query_queue.put(query)
     print("Server: ...Videos stored locally")
 
+    if app.config["PUBLIC_KEY"] is not None:
+        password = encrypt(app.config["SERVER_PW"])
+    else:
+        password = None
+
     payload = {
         "password": (
-            app.config["QUERY_CLIENT_PASSWORD"],
+            password,
             "application/json",
         ),
     }

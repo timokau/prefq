@@ -36,6 +36,8 @@ class QueryClient:
         """POST-Request: Send videos to Query Server"""
 
         def encrypt(message):
+            """Encrypt strings using SSH"""
+
             encrypted_message = self.ssh_pub.encrypt(
                 message.encode(),
                 padding.OAEP(
@@ -47,6 +49,20 @@ class QueryClient:
 
             encrypted_message = base64.b64encode(encrypted_message).decode("utf8")
             return encrypted_message
+
+        # pylint: disable=R0801
+        def decrypt(encrypted_message):
+            """Decrypt SSH encrypted strings"""
+
+            decrypted_message = self.ssh_priv.decrypt(
+                encrypted_message,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None,
+                ),
+            )
+            return decrypted_message.decode()
 
         left_video_file_path = os.path.join(video_dir, left_filename)
         right_video_file_path = os.path.join(video_dir, right_filename)
@@ -79,7 +95,7 @@ class QueryClient:
                 "application/json",
             ),
             "password": (
-                json.dumps(password),
+                password,
                 "application/json",
             ),
         }
@@ -90,7 +106,9 @@ class QueryClient:
             )
             if 200 <= response.status_code < 400:
                 print(f"Query Client: Payload transferred   Query ID: {query_id}")
-                self.server_pw = response.json().get("password")[0]
+                encrypted_password = response.json().get("password")[0]
+                encrypted_password = base64.b64decode(encrypted_password)
+                self.server_pw = decrypt(encrypted_password)
 
         except requests.exceptions.RequestException as exception:
             print("Query Client: Error: send_videos()")
