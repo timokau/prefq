@@ -57,6 +57,8 @@ class PrefqGatherer(SynchronousHumanGatherer):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         rng: Optional[np.random.Generator] = None,
         server_url: str = None,
+        sshkey: str = None,
+        server_pw: str = None,
     ) -> None:
         super().__init__(custom_logger=custom_logger, rng=rng, video_dir=video_dir)
         self.video_dir = video_dir
@@ -65,11 +67,13 @@ class PrefqGatherer(SynchronousHumanGatherer):
         self.video_height = video_height
         self.frames_per_second = frames_per_second
         self.server_url = server_url
+        self.sshkey = sshkey
+        self.server_pw = server_pw
 
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Iteratively sends video-pairs associated with a Query-ID to server."""
 
-        query_client = QueryClient(self.server_url)
+        query_client = QueryClient(query_server_url=self.server_url, sshkey=self.sshkey, server_pw=self.server_pw)
 
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
             write_fragment_video(
@@ -131,9 +135,30 @@ def main():
         default=DEFAULT_SERVER_URL,
         help="Specify the server url (default: http://localhost:5000/)",
     )
+    parser.add_argument(
+        "--sshkey",
+        type=str,
+        default=None,
+        help="Specify SSH public-key filepath (default: None)",
+    )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--pw",
+        type=str,
+        default=None,
+        help="Specify Password for request authentication (default: None)",
+    )
 
     args = parser.parse_args()
     SERVER_URL = args.url
+    sshkey = args.sshkey
+    server_pw = args.pw
+
+    is_encryption_desired = (server_pw is not None) and (sshkey is not None)
+    is_encryption_not_desired = (server_pw is None) and (sshkey is None)
+    is_correctly_initialized = is_encryption_desired or is_encryption_not_desired
+    if not is_correctly_initialized:
+        raise ValueError("SSH key and PW must both be either both present or both None")
 
     rng = np.random.default_rng(0)
     video_dir = tempfile.mkdtemp(prefix="videos_")
@@ -190,7 +215,7 @@ def main():
             rng=rng,
         )
 
-        gatherer = PrefqGatherer(video_dir=video_dir, server_url=SERVER_URL)
+        gatherer = PrefqGatherer(video_dir=video_dir, server_url=SERVER_URL, sshkey=sshkey, server_pw=server_pw)
         querent = preference_comparisons.PreferenceQuerent()
 
         pref_comparisons = preference_comparisons.PreferenceComparisons(

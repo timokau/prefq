@@ -34,17 +34,22 @@ the server can ensure, that unevaluated Queries due to unexpected events
 """
 
 import argparse
+import base64
 import os
 import queue
 from urllib.parse import unquote
 
 import flask
 import waitress
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
 app.config["VIDEO_FOLDER"] = "videos"
+app.config["PRIVATE_KEY"] = None
+app.config["SERVER_PW"] = None
 
 feedback_data = {}
 query_queue = queue.Queue()
@@ -55,12 +60,34 @@ DEFAULT_PORT = 5000
 DEFAULT_DEBUG = False
 
 
-def before_first_request():
+def before_first_request(sshkey, server_pw):
     """Define starting routine"""
+
+    if sshkey is not None:
+        with open(sshkey, "rb") as key_file:
+            app.config["PRIVATE_KEY"] = serialization.load_ssh_private_key(
+                key_file.read(),
+                password=None,
+            )
+        app.config["SERVER_PW"] = server_pw
 
     # Create video folder (if necessary)
     if not os.path.exists(app.config["VIDEO_FOLDER"]):
         os.mkdir(app.config["VIDEO_FOLDER"])
+
+
+def decrypt(encrypted_message):
+    """Decrypt SSH encrypted strings"""
+
+    decrypted_message = app.config["PRIVATE_KEY"].decrypt(
+        encrypted_message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    return decrypted_message.decode()
 
 
 @app.route("/", methods=["GET"])
@@ -141,7 +168,15 @@ def receive_videos():
 
     print("\n\nServer: Starting receive_videos() [...]")
 
-    print("Server: Receiving videos...")
+    if app.config["PRIVATE_KEY"] is not None:
+        encrypted_password = unquote(request.files.get("password").filename).strip('"')
+        encrypted_password = base64.b64decode(encrypted_password)
+        decrypted_password = decrypt(encrypted_password)
+        if decrypted_password != app.config["SERVER_PW"]:
+            print("Server: [...] Request Rejected (incorrect password)")
+            return "Server: [...] Terminating receive_videos()"
+
+    print("Server: Storing videos...")
     query_id = unquote(request.files.get("query_id").filename).strip('"')
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
@@ -255,14 +290,39 @@ def main():
         default=DEFAULT_DEBUG,
         help="Specify debug mode (default: False)",
     )
+    parser.add_argument(
+        "--sshkey",
+        type=str,
+        default=None,
+        help="Specify SSH key filepath (default: None)",
+    )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--pw",
+        type=str,
+        default=None,
+        help="Specify Password for request authentication (default: None)",
+    )
 
     args = parser.parse_args()
 
     host = args.host
     port = args.port
     debug = args.debug
+    sshkey = args.sshkey
+    server_pw = args.pw
 
-    before_first_request()
+    is_authentication_desired = (server_pw is not None) and (sshkey is not None)
+    is_authentication_not_desired = (server_pw is None) and (sshkey is None)
+
+    is_correctly_initialized = (
+        is_authentication_desired or is_authentication_not_desired
+    )
+
+    if not is_correctly_initialized:
+        raise ValueError("SSH key and PW must be either both present or both None")
+
+    before_first_request(sshkey, server_pw)
     print(f"Host: {host}, Port: {port},   Debug: {debug}\n\n")
 
     # A detailled explanation of the benefits and drawbacks of using the
