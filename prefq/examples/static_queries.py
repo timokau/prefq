@@ -26,6 +26,7 @@ def generate_query_id(left_filename, right_filename):
     return query_id
 
 
+# pylint: disable=R0914
 def main():
     """Send the example queries and poll for feedback."""
 
@@ -37,11 +38,18 @@ def main():
         default=DEFAULT_SERVER_URL,
         help="Specify the server url (default: http://localhost:5000/)",
     )
+    parser.add_argument(
+        "--sshkey",
+        type=str,
+        default=None,
+        help="Specify SSH private-key filepath (default: None)",
+    )
 
     args = parser.parse_args()
     server_url = args.url
+    sshkey = args.sshkey
 
-    query_client = QueryClient(server_url)
+    query_client = QueryClient(server_url, sshkey)
 
     for left_filename, right_filename in VIDEO_PAIRS:
         query_id = generate_query_id(left_filename, right_filename)

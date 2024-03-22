@@ -1,18 +1,31 @@
 """Client for sending videos to Query Server and receiving feedback"""
 
+import base64
 import json
 import os
 import time
 
 import requests
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 
 class QueryClient:
     """Client for sending videos to Query Server and receiving feedback"""
 
-    def __init__(self, query_server_url):
+    def __init__(self, query_server_url, sshkey):
+        if sshkey is not None:
+            # read ssh key
+            with open(sshkey, "rb") as key_file:
+                sshkey = serialization.load_ssh_private_key(
+                    key_file.read(),
+                    password=None,
+                )
+
+        self.sshkey = sshkey
         self.query_server_url = query_server_url
 
+    # pylint: disable=R0914
     def send_video_pair(self, query_id, left_filename, right_filename, video_dir):
         """POST-Request: Send videos to Query Server"""
 
@@ -25,6 +38,14 @@ class QueryClient:
             # Read the file data into memory
             left_video_data = left_video_file.read()
             right_video_data = right_video_file.read()
+
+        if self.sshkey is not None:
+            encrypted_password = requests.get(
+                self.query_server_url + "challenge", timeout=10
+            ).json()
+            password = decrypt(encrypted_password, self.sshkey)
+        else:
+            password = None
 
         payload = {
             "left_video": (
@@ -39,6 +60,10 @@ class QueryClient:
             ),
             "query_id": (
                 json.dumps(query_id),
+                "application/json",
+            ),
+            "password": (
+                json.dumps(password),
                 "application/json",
             ),
         }
@@ -80,3 +105,17 @@ class QueryClient:
                 feedback_data = exception
                 break
         return feedback_data
+
+
+def decrypt(encrypted_password, sshkey):
+    """Decrypt SSH encrypted strings"""
+
+    decrypted_password = sshkey.decrypt(
+        base64.b64decode(encrypted_password),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    return decrypted_password.decode()
