@@ -37,6 +37,8 @@ import argparse
 import base64
 import os
 import queue
+import random
+import string
 from urllib.parse import unquote
 
 import flask
@@ -111,6 +113,14 @@ def encrypt(message):
     )
     encrypted_message = base64.b64encode(encrypted_message).decode("utf8")
     return encrypted_message
+
+
+def generate_password(length):
+    """Generates random password of specified length"""
+
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = "".join(random.choice(characters) for i in range(length))
+    return password
 
 
 @app.route("/", methods=["GET"])
@@ -216,6 +226,7 @@ def receive_videos():
     print("Server: ...Videos stored locally")
 
     if app.config["PUBLIC_KEY"] is not None:
+        app.config["SERVER_PW"] = generate_password(20)
         password = encrypt(app.config["SERVER_PW"])
     else:
         password = None
