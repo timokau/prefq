@@ -34,17 +34,25 @@ the server can ensure, that unevaluated Queries due to unexpected events
 """
 
 import argparse
+import base64
 import os
 import queue
+import random
+import string
 from urllib.parse import unquote
 
 import flask
 import waitress
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
 app.config["VIDEO_FOLDER"] = "videos"
+app.config["PRIVATE_KEY"] = None
+app.config["PUBLIC_KEY"] = None
+app.config["SERVER_PW"] = None
 
 feedback_data = {}
 query_queue = queue.Queue()
@@ -55,12 +63,64 @@ DEFAULT_PORT = 5000
 DEFAULT_DEBUG = False
 
 
-def before_first_request():
+def before_first_request(ssh_pub, ssh_priv, server_pw):
     """Define starting routine"""
+
+    if (ssh_pub, ssh_priv, server_pw) != (None, None, None):
+        app.config["SERVER_PW"] = server_pw
+
+        with open(ssh_priv, "rb") as key_file:
+            app.config["PRIVATE_KEY"] = serialization.load_ssh_private_key(
+                key_file.read(),
+                password=None,
+            )
+
+        with open(ssh_pub, "rb") as key_file:
+            app.config["PUBLIC_KEY"] = serialization.load_ssh_public_key(
+                key_file.read(),
+            )
 
     # Create video folder (if necessary)
     if not os.path.exists(app.config["VIDEO_FOLDER"]):
         os.mkdir(app.config["VIDEO_FOLDER"])
+
+
+def decrypt(encrypted_message):
+    """Decrypt SSH encrypted strings"""
+
+    decrypted_message = app.config["PRIVATE_KEY"].decrypt(
+        encrypted_message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    return decrypted_message.decode()
+
+
+def encrypt(message):
+    """Encrypt strings using SSH"""
+
+    # pylint: disable=R0801
+    encrypted_message = app.config["PUBLIC_KEY"].encrypt(
+        message.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    encrypted_message = base64.b64encode(encrypted_message).decode("utf8")
+    return encrypted_message
+
+
+def generate_password(length):
+    """Generates random password of specified length"""
+
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = "".join(random.choice(characters) for i in range(length))
+    return password
 
 
 @app.route("/", methods=["GET"])
@@ -141,7 +201,15 @@ def receive_videos():
 
     print("\n\nServer: Starting receive_videos() [...]")
 
-    print("Server: Receiving videos...")
+    if app.config["PRIVATE_KEY"] is not None:
+        encrypted_password = unquote(request.files.get("password").filename).strip('"')
+        encrypted_password = base64.b64decode(encrypted_password)
+        decrypted_password = decrypt(encrypted_password)
+        if decrypted_password != app.config["SERVER_PW"]:
+            print("Server: [...] Request Rejected (incorrect password)")
+            return "Server: [...] Terminating receive_videos()"
+
+    print("Server: Storing videos...")
     query_id = unquote(request.files.get("query_id").filename).strip('"')
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
@@ -157,8 +225,21 @@ def receive_videos():
     query_queue.put(query)
     print("Server: ...Videos stored locally")
 
+    if app.config["PUBLIC_KEY"] is not None:
+        app.config["SERVER_PW"] = generate_password(20)
+        password = encrypt(app.config["SERVER_PW"])
+    else:
+        password = None
+
+    payload = {
+        "password": (
+            password,
+            "application/json",
+        ),
+    }
+
     print("Server: [...] Terminating receive_videos()")
-    return "Server: [...] Terminating receive_videos()"
+    return jsonify(payload)
 
 
 @app.route("/videos/<path:filename>", methods=["GET"])
@@ -255,14 +336,46 @@ def main():
         default=DEFAULT_DEBUG,
         help="Specify debug mode (default: False)",
     )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--sshpub",
+        type=str,
+        default=None,
+        help="Specify SSH public-key filepath (default: None)",
+    )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--sshpriv",
+        type=str,
+        default=None,
+        help="Specify SSH private-key filepath (default: None)",
+    )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--pw",
+        type=str,
+        default=None,
+        help="Specify Password for request authentication (default: None)",
+    )
 
     args = parser.parse_args()
 
     host = args.host
     port = args.port
     debug = args.debug
+    ssh_pub = args.sshpub
+    ssh_priv = args.sshpriv
+    server_pw = args.pw
 
-    before_first_request()
+    is_encryption_desired = (server_pw, ssh_pub, ssh_priv) != (None, None, None)
+    is_encryption_not_desired = (server_pw, ssh_pub, ssh_priv) == (None, None, None)
+
+    is_correctly_initialized = is_encryption_desired or is_encryption_not_desired
+
+    if not is_correctly_initialized:
+        raise ValueError("SSH keys and PW must be either all present or all None")
+
+    before_first_request(ssh_pub, ssh_priv, server_pw)
     print(f"Host: {host}, Port: {port},   Debug: {debug}\n\n")
 
     # A detailled explanation of the benefits and drawbacks of using the
