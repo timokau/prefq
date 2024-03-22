@@ -90,6 +90,7 @@ class QueryClient:
             )
             if 200 <= response.status_code < 400:
                 print(f"Query Client: Payload transferred   Query ID: {query_id}")
+                self.server_pw = response.json().get("password")[0]
 
         except requests.exceptions.RequestException as exception:
             print("Query Client: Error: send_videos()")
