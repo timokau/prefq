@@ -199,8 +199,15 @@ def receive_videos():
     query_queue.put(query)
     print("Server: ...Videos stored locally")
 
+    payload = {
+        "password": (
+            app.config["QUERY_CLIENT_PASSWORD"],
+            "application/json",
+        ),
+    }
+
     print("Server: [...] Terminating receive_videos()")
-    return "Server: [...] Terminating receive_videos()"
+    return jsonify(payload)
 
 
 @app.route("/videos/<path:filename>", methods=["GET"])
