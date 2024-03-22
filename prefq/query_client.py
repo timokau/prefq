@@ -13,16 +13,22 @@ from cryptography.hazmat.primitives.asymmetric import padding
 class QueryClient:
     """Client for sending videos to Query Server and receiving feedback"""
 
-    def __init__(self, query_server_url, sshkey, server_pw):
-        if sshkey is not None:
-            # read ssh key
-            with open(sshkey, "rb") as key_file:
-                sshkey = serialization.load_ssh_public_key(
+    def __init__(self, query_server_url, ssh_pub, ssh_priv, server_pw):
+        if (ssh_pub, ssh_priv, server_pw) != (None, None, None):
+            with open(ssh_pub, "rb") as key_file:
+                ssh_pub = serialization.load_ssh_public_key(
                     key_file.read(),
                 )
 
+            with open(ssh_priv, "rb") as key_file:
+                ssh_priv = serialization.load_ssh_private_key(
+                    key_file.read(),
+                    password=None,
+                )
+
         self.server_pw = server_pw
-        self.sshkey = sshkey
+        self.ssh_pub = ssh_pub
+        self.ssh_priv = ssh_priv
         self.query_server_url = query_server_url
 
     # pylint: disable=R0914
@@ -30,7 +36,7 @@ class QueryClient:
         """POST-Request: Send videos to Query Server"""
 
         def encrypt(message):
-            encrypted_message = self.sshkey.encrypt(
+            encrypted_message = self.ssh_pub.encrypt(
                 message.encode(),
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -52,7 +58,7 @@ class QueryClient:
             left_video_data = left_video_file.read()
             right_video_data = right_video_file.read()
 
-        if self.sshkey is not None:
+        if self.ssh_pub is not None:
             password = encrypt(self.server_pw)
         else:
             password = None

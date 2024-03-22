@@ -38,11 +38,19 @@ def main():
         default=DEFAULT_SERVER_URL,
         help="Specify the server url (default: http://localhost:5000/)",
     )
+    # pylint: disable=R0801
     parser.add_argument(
-        "--sshkey",
+        "--sshpub",
         type=str,
         default=None,
         help="Specify SSH public-key filepath (default: None)",
+    )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--sshpriv",
+        type=str,
+        default=None,
+        help="Specify SSH private-key filepath (default: None)",
     )
     # pylint: disable=R0801
     parser.add_argument(
@@ -54,16 +62,17 @@ def main():
 
     args = parser.parse_args()
     server_url = args.url
-    sshkey = args.sshkey
+    ssh_pub = args.sshpub
+    ssh_priv = args.sshpriv
     server_pw = args.pw
 
-    is_encryption_desired = (server_pw is not None) and (sshkey is not None)
-    is_encryption_not_desired = (server_pw is None) and (sshkey is None)
+    is_encryption_desired = (server_pw, ssh_pub, ssh_priv) != (None, None, None)
+    is_encryption_not_desired = (server_pw, ssh_pub, ssh_priv) == (None, None, None)
     is_correctly_initialized = is_encryption_desired or is_encryption_not_desired
     if not is_correctly_initialized:
-        raise ValueError("SSH key and PW must both be either both present or both None")
+        raise ValueError("SSH keys and PW must be either all present or all None")
 
-    query_client = QueryClient(server_url, sshkey, server_pw)
+    query_client = QueryClient(server_url, ssh_pub, ssh_priv, server_pw)
 
     for left_filename, right_filename in VIDEO_PAIRS:
         query_id = generate_query_id(left_filename, right_filename)

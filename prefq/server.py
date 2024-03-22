@@ -49,6 +49,7 @@ app = Flask(__name__)
 
 app.config["VIDEO_FOLDER"] = "videos"
 app.config["PRIVATE_KEY"] = None
+app.config["PUBLIC_KEY"] = None
 app.config["SERVER_PW"] = None
 
 feedback_data = {}
@@ -60,16 +61,22 @@ DEFAULT_PORT = 5000
 DEFAULT_DEBUG = False
 
 
-def before_first_request(sshkey, server_pw):
+def before_first_request(ssh_pub, ssh_priv, server_pw):
     """Define starting routine"""
 
-    if sshkey is not None:
-        with open(sshkey, "rb") as key_file:
+    if (ssh_pub, ssh_priv, server_pw) != (None, None, None):
+        app.config["SERVER_PW"] = server_pw
+
+        with open(ssh_priv, "rb") as key_file:
             app.config["PRIVATE_KEY"] = serialization.load_ssh_private_key(
                 key_file.read(),
                 password=None,
             )
-        app.config["SERVER_PW"] = server_pw
+
+        with open(ssh_pub, "rb") as key_file:
+            app.config["PUBLIC_KEY"] = serialization.load_ssh_public_key(
+                key_file.read(),
+            )
 
     # Create video folder (if necessary)
     if not os.path.exists(app.config["VIDEO_FOLDER"]):
@@ -290,11 +297,19 @@ def main():
         default=DEFAULT_DEBUG,
         help="Specify debug mode (default: False)",
     )
+    # pylint: disable=R0801
     parser.add_argument(
-        "--sshkey",
+        "--sshpub",
         type=str,
         default=None,
-        help="Specify SSH key filepath (default: None)",
+        help="Specify SSH public-key filepath (default: None)",
+    )
+    # pylint: disable=R0801
+    parser.add_argument(
+        "--sshpriv",
+        type=str,
+        default=None,
+        help="Specify SSH private-key filepath (default: None)",
     )
     # pylint: disable=R0801
     parser.add_argument(
@@ -309,18 +324,19 @@ def main():
     host = args.host
     port = args.port
     debug = args.debug
-    sshkey = args.sshkey
+    ssh_pub = args.sshpub
+    ssh_priv = args.sshpriv
     server_pw = args.pw
 
-    is_encryption_desired = (server_pw is not None) and (sshkey is not None)
-    is_encryption_not_desired = (server_pw is None) and (sshkey is None)
+    is_encryption_desired = (server_pw, ssh_pub, ssh_priv) != (None, None, None)
+    is_encryption_not_desired = (server_pw, ssh_pub, ssh_priv) == (None, None, None)
 
     is_correctly_initialized = is_encryption_desired or is_encryption_not_desired
 
     if not is_correctly_initialized:
-        raise ValueError("SSH key and PW must be either both present or both None")
+        raise ValueError("SSH keys and PW must be either all present or all None")
 
-    before_first_request(sshkey, server_pw)
+    before_first_request(ssh_pub, ssh_priv, server_pw)
     print(f"Host: {host}, Port: {port},   Debug: {debug}\n\n")
 
     # A detailled explanation of the benefits and drawbacks of using the
