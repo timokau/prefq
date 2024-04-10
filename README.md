@@ -17,11 +17,11 @@ Seperating the Query Client from the Server allows for more flexibility. For ins
 
 ### Clone the repository & install poetry (package manager)
 1. Clone the repository: `git clone https://github.com/timokau/prefq.git`
-2. Install poetry: `bash curl -sSL https://install.python-poetry.org | python3 - `
+2. Install poetry: `curl -sSL https://install.python-poetry.org | python3 - `
 3. Add poetry to PATH and make sure this persists across reboots. 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-echo 'export PATH="$HOME/bin:$PATH"' > ~/.bashrc
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -132,4 +132,14 @@ Now, for deploying your server and making it remotely accessible, there's countl
 
 ## Contributing
 
-This project uses [pre-commit](https://pre-commit.com/) for initial quality and consistency checks. To run these checks on each commit, simply execute `poetry run pre-commit install`. These checks will also be run on each GitHub pull request.
+This project uses [pre-commit](https://pre-commit.com/) for initial quality and consistency checks. To run these checks on each commit.
+
+1. install poetry: `curl -sSL https://install.python-poetry.org | python3 -`
+2. install pre-commit checks: `poetry run pre-commit install`
+
+For automatic code formatting according to these consistency checks you can use black in combination with pylint. This will ease your workflow, as your code will be adjusted automatically, instead of formatting everything manually. 
+
+1. `pip install pylint`
+2. `pip install black`
+
+Whenever you run `git commit`, pylint and black will attempt to [reformat](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html) your code on all staged changes. If changes are made you can just save the formatted file(s) and run `git add <formatted files>`.
