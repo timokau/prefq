@@ -30,7 +30,7 @@ source ~/.bashrc
 This server script's behavior is configurable using commandline arguments:
 
 ```
-usage: server.py [-h] [--host HOST] [--port PORT] [--debug DEBUG]
+usage: scripts/run_server.sh [-h] [--host HOST] [--port PORT] [--debug DEBUG]
 
 options:
   -h, --help     show this help message and exit
@@ -71,8 +71,9 @@ options:
 
 Send queries to your server (assuming defaults):
 1. Open a new terminal
-2. *(a)* Send static queries: `scripts/run_static_queries.sh`
-    *(b)* Send dynamic queries: `scripts/run_imitation_example.sh`
+2. 
+  *(a)* Send static queries: `scripts/run_static_queries.sh`  
+  *(b)* Send dynamic queries: `scripts/run_imitation_example.sh`
 
 
 Option (a):
@@ -97,37 +98,31 @@ Using `waitress.serve()` is a convenient way of launching a WSGI capable server 
 
 Now, for deploying your server and making it remotely accessible, there's countless different solutions. One convenient way is to use a Cloud Hosting platform. Within this guide we will provide an example for setting up a server using [Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/?intcmp=ohp052322ocift). You will be able to collect Preference Feedback from multiple Feedback Clients, without any expenses. Setting up a server on using a different cloud hosting platform can be done similarly.
 
-### Oracle Cloud Setup
+### Google Cloud Setup
 
-1. Create an account on https://www.oracle.com/cloud/free/
-2. Go to https://cloud.oracle.com/networking/
-3. Select `start vcn wizard` &rarr; create vcn with internet connectivity
-4. Type in a name for your server, then select next
-5. Go to `Public Subnet` &rarr; `Default Security List` &rarr; `add ingress rules`
-6. Specify:
-`Source Type: "CIDR"`
-`Source CIDR: "0.0.0.0/0"`
-`IP Protocol: "TCP"`
-`Port Range: 80`
-`Description: "HTTP Port"`
-7. Click `Generate SSH Key`, then download the key
-8. go to `menu` &rarr; `compute` &rarr; `instances` &rarr; `create instance`
-9. Specify instance name
-10. Select desired system image (we use ubuntu 22.04)
-11. Copy public IP address (`<your public ip address>`)
-12. Open the console on your laptop, navigate to the folder with your SSH Key
-13. Activate your key: `chmod 400 <yoursshkey>.key`
-14. Connect to your server via ssh: `ssh -i <yoursshkey.key> ubuntu@<your public ip adress>`
-15. You're now connected with your Oracle Cloud Server - log in as admin `sudo su`
-16. `sudo apt update` &rarr; `sudo apt upgrade` &rarr; `sudo apt install git`
-18. Allow incoming http traffic on port 80: `sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT`
-19. Allow http traffic on your firewall:
-	```bash
-	sudo apt install firewalld
-	firewall-cmd --add-service=http --permanent
-	```
-21. Start the Server as described in the previous chapter
-22. From your local machine send videos to your server: `scripts/run_static_queries.sh --url http://<your-public-IP>:80`
+1. Create an account on https://cloud.google.com/
+2. Add the `Compute Engine API` service, by entering it in the search bar
+3. Enter `app engine` into the search bar & select the first result
+4. Create an application in your preferred region using default engine account
+5. Go to `IAM & admin page`, then select the corresponding project & click on the pen symbol on the right
+6. Give appropriate permissions by adding the `Storage Object Admin` role to the project
+7. Search the `firewall` settings in the searchbar
+8. Select `create firewall rule`, then specify:
+`Name: http-port`
+`Targets: Global`
+9. Proceed, then click `add rule`
+10. Leave the defaults, only specify `Source IP range: 0.0.0.0/0`
+11. Select protocols and ports &rarr; `TCP - Port 80`
+12. Search the `VM Instances` settings to create an instance
+13. Select a name, leave the defaults except for firewall settings &rarr; `allow http-traffic` &rarr; `create instance`
+14. From the google cloud shell connect via ssh: `gcloud compute ssh <your-prefq-instance>`
+15. You're now connected with your GCP server - log in as admin `sudo su`
+16. Allow incoming http traffic on port 80: `sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT`
+17. `sudo apt install git`
+18. Start the Server as described in the previous chapter
+19. Your prefq-server is now accessible from anywhere in the world on any browser by entering the public IP of your instance in a webbrowser - to identify `<your-public-IP>`, go to `VM Instances` and search for the `external IP`
+20. Feedback Client: Enter `<your-public-IP>` in any webbrowser to get redirected to the http interface
+21. Query Client: From your local machine send videos to your server: `scripts/run_static_queries.sh --url http://<your-public-IP>`
 
 
 ## Contributing
