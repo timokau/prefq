@@ -34,17 +34,23 @@ the server can ensure, that unevaluated Queries due to unexpected events
 """
 
 import argparse
+import base64
 import os
 import queue
+import secrets
 from urllib.parse import unquote
 
 import flask
 import waitress
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
 app.config["VIDEO_FOLDER"] = "videos"
+app.config["PUBLIC_KEY"] = None
+app.config["SERVER_PW"] = None
 
 feedback_data = {}
 query_queue = queue.Queue()
@@ -55,12 +61,51 @@ DEFAULT_PORT = 5000
 DEFAULT_DEBUG = False
 
 
-def before_first_request():
+def before_first_request(sshkey):
     """Define starting routine"""
+
+    if sshkey is not None:
+        with open(sshkey, "rb") as key_file:
+            app.config["PUBLIC_KEY"] = serialization.load_ssh_public_key(
+                key_file.read(),
+            )
 
     # Create video folder (if necessary)
     if not os.path.exists(app.config["VIDEO_FOLDER"]):
         os.mkdir(app.config["VIDEO_FOLDER"])
+
+
+def encrypt(message):
+    """Encrypt message with public key"""
+
+    encrypted_message = app.config["PUBLIC_KEY"].encrypt(
+        message.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+
+    encrypted_message = base64.b64encode(encrypted_message).decode("utf8")
+    return encrypted_message
+
+
+@app.route("/challenge", methods=["GET"])
+def send_challenge():
+    """
+    Send a challenge to the Query Client
+
+    This is done in order to ensure secure communication.
+
+    The Query Client has to decrypt the challenge with the private key,
+    and send it back to the server, in order to prove its identity.
+    """
+
+    password = secrets.token_urlsafe(32)
+    app.config["SERVER_PW"] = password
+    challenge = encrypt(password)
+    return jsonify(challenge)
 
 
 @app.route("/", methods=["GET"])
@@ -141,7 +186,14 @@ def receive_videos():
 
     print("\n\nServer: Starting receive_videos() [...]")
 
-    print("Server: Receiving videos...")
+    if app.config["PUBLIC_KEY"] is not None:
+        password = unquote(request.files.get("password").filename).strip('"')
+        if password != app.config["SERVER_PW"]:
+            print("Server: Request Rejected (incorrect password)")
+            return "Server: [...] Terminating receive_videos()"
+        print("Server: Request Accepted (correct password)")
+
+    print("Server: Storing videos...")
     query_id = unquote(request.files.get("query_id").filename).strip('"')
     left_video = request.files.get("left_video")
     right_video = request.files.get("right_video")
@@ -255,14 +307,21 @@ def main():
         default=DEFAULT_DEBUG,
         help="Specify debug mode (default: False)",
     )
+    parser.add_argument(
+        "--sshkey",
+        type=str,
+        default=None,
+        help="Specify SSH public-key filepath (default: None)",
+    )
 
     args = parser.parse_args()
 
     host = args.host
     port = args.port
     debug = args.debug
+    sshkey = args.sshkey
 
-    before_first_request()
+    before_first_request(sshkey)
     print(f"Host: {host}, Port: {port},   Debug: {debug}\n\n")
 
     # A detailled explanation of the benefits and drawbacks of using the

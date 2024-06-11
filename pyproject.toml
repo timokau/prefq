@@ -12,6 +12,7 @@ license = "MIT"
 python = "^3.9"
 moviepy = "^1.0.3"
 waitress = "2.1.2"
+cryptography = "^3.4.8"
 flask = "^3.0.2"
 gymnasium = {extras = ["box2d"], version = "^0.29.1", optional = true}
 imitation = { git = "https://github.com/rk1a/imitation", branch = "human-prefs", optional = true}
